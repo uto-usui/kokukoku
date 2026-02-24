@@ -1,66 +1,115 @@
-//
-//  ContentView.swift
-//  Kokukoku
-//
-//  Created by uto note on 2026/02/24.
-//
-
-import SwiftUI
 import SwiftData
+import SwiftUI
 
-struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+private enum MacSidebarItem: String, CaseIterable, Identifiable {
+    case timer
+    case history
+    case settings
 
-    var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        } detail: {
-            Text("Select an item")
+    var id: String {
+        self.rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .timer:
+            "Timer"
+        case .history:
+            "History"
+        case .settings:
+            "Settings"
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
+    var symbolName: String {
+        switch self {
+        case .timer:
+            "timer"
+        case .history:
+            "clock.arrow.circlepath"
+        case .settings:
+            "gearshape"
         }
     }
 }
 
+struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var store = TimerStore()
+
+    var body: some View {
+        Group {
+            #if os(macOS)
+                self.macLayout
+            #else
+                self.iosLayout
+            #endif
+        }
+        .task {
+            self.store.bind(modelContext: self.modelContext)
+        }
+        .onChange(of: self.scenePhase) { _, newPhase in
+            self.store.handleScenePhaseChange(newPhase)
+        }
+    }
+
+    #if os(macOS)
+        @State private var selectedSidebarItem: MacSidebarItem = .timer
+
+        private var macLayout: some View {
+            NavigationSplitView {
+                List(MacSidebarItem.allCases, selection: self.$selectedSidebarItem) { item in
+                    Label(item.title, systemImage: item.symbolName)
+                        .tag(item)
+                }
+                .navigationTitle("Kokukoku")
+                .listStyle(.sidebar)
+                .frame(minWidth: 200)
+            } detail: {
+                switch self.selectedSidebarItem {
+                case .timer:
+                    NavigationStack {
+                        TimerScreen(store: self.store)
+                    }
+                case .history:
+                    NavigationStack {
+                        HistoryScreen()
+                    }
+                case .settings:
+                    NavigationStack {
+                        SettingsScreen(store: self.store)
+                    }
+                }
+            }
+            .frame(minWidth: 900, minHeight: 600)
+        }
+    #else
+        private var iosLayout: some View {
+            NavigationStack {
+                TimerScreen(store: self.store)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .topBarTrailing) {
+                            NavigationLink {
+                                HistoryScreen()
+                            } label: {
+                                Image(systemName: "clock.arrow.circlepath")
+                            }
+
+                            NavigationLink {
+                                SettingsScreen(store: self.store)
+                            } label: {
+                                Image(systemName: "gearshape")
+                            }
+                        }
+                    }
+            }
+        }
+    #endif
+}
+
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+        .modelContainer(for: [SessionRecord.self, UserTimerPreferences.self], inMemory: true)
 }

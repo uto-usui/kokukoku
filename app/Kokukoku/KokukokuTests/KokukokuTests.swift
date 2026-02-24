@@ -1,16 +1,88 @@
-//
-//  KokukokuTests.swift
-//  KokukokuTests
-//
-//  Created by uto note on 2026/02/24.
-//
-
+import Foundation
+@testable import Kokukoku
 import Testing
 
-struct KokukokuTests {
+struct TimerEngineTests {
+    private let config = TimerConfig.default
 
-    @Test func example() async throws {
-        // Write your test here and use APIs like `#expect(...)` to check expected conditions.
+    @Test func nextSessionType_usesShortBreakBeforeLongBreakThreshold() {
+        let next = TimerEngine.nextSessionType(current: .focus, completedFocusCount: 1, config: self.config)
+        #expect(next == .shortBreak)
     }
 
+    @Test func nextSessionType_usesLongBreakAtThreshold() {
+        let next = TimerEngine.nextSessionType(current: .focus, completedFocusCount: 4, config: self.config)
+        #expect(next == .longBreak)
+    }
+
+    @Test func remainingSeconds_usesEndDateWhenRunning() {
+        let now = Date(timeIntervalSince1970: 1000)
+        let endDate = now.addingTimeInterval(90)
+
+        let remaining = TimerEngine.remainingSeconds(
+            timerState: .running,
+            endDate: endDate,
+            pausedRemainingSec: nil,
+            now: now,
+            fallbackDurationSec: 10
+        )
+
+        #expect(remaining == 90)
+    }
+
+    @Test func remainingSeconds_usesPausedValueWhenPaused() {
+        let remaining = TimerEngine.remainingSeconds(
+            timerState: .paused,
+            endDate: nil,
+            pausedRemainingSec: 123,
+            now: Date(),
+            fallbackDurationSec: 10
+        )
+
+        #expect(remaining == 123)
+    }
+
+    @Test func stopPolicy_stopAtNextBoundary_consumesPolicy() {
+        let decision = TimerEngine.shouldStopAtBoundary(
+            policy: .stopAtNextBoundary,
+            nextSessionType: .shortBreak,
+            dueToSkip: false,
+            autoStart: true
+        )
+
+        #expect(decision.shouldStop)
+        #expect(decision.consumePolicy)
+    }
+
+    @Test func stopPolicy_stopAtLongBreak_onlyStopsAtLongBreak() {
+        let shortBreakDecision = TimerEngine.shouldStopAtBoundary(
+            policy: .stopAtLongBreak,
+            nextSessionType: .shortBreak,
+            dueToSkip: false,
+            autoStart: true
+        )
+
+        let longBreakDecision = TimerEngine.shouldStopAtBoundary(
+            policy: .stopAtLongBreak,
+            nextSessionType: .longBreak,
+            dueToSkip: false,
+            autoStart: true
+        )
+
+        #expect(!shortBreakDecision.shouldStop)
+        #expect(longBreakDecision.shouldStop)
+        #expect(longBreakDecision.consumePolicy)
+    }
+
+    @Test func stopPolicy_autoStartOff_alwaysStops() {
+        let decision = TimerEngine.shouldStopAtBoundary(
+            policy: .none,
+            nextSessionType: .shortBreak,
+            dueToSkip: false,
+            autoStart: false
+        )
+
+        #expect(decision.shouldStop)
+        #expect(!decision.consumePolicy)
+    }
 }

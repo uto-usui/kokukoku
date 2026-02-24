@@ -1,18 +1,12 @@
-//
-//  KokukokuApp.swift
-//  Kokukoku
-//
-//  Created by uto note on 2026/02/24.
-//
-
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @main
 struct KokukokuApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self
+            SessionRecord.self,
+            UserTimerPreferences.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -27,6 +21,6 @@ struct KokukokuApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(self.sharedModelContainer)
     }
 }
