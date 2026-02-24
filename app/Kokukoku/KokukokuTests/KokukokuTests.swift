@@ -93,6 +93,7 @@ struct TimerStoreTests {
     @Test func restoreFromElapsedRunningSession_transitionsToNextSession() {
         let store = TimerStore()
         let now = Date()
+        store.now = now
 
         store.config = TimerConfig.default
         store.snapshot = TimerSnapshot(
@@ -115,6 +116,7 @@ struct TimerStoreTests {
     @Test func restoreWithAutoStartOff_stopsAtBoundary() {
         let store = TimerStore()
         let now = Date()
+        store.now = now
         var config = TimerConfig.default
         config.autoStart = false
         store.config = config
@@ -138,6 +140,7 @@ struct TimerStoreTests {
     @Test func stopAtLongBreak_policyStopsAndConsumesPolicy() {
         let store = TimerStore()
         let now = Date()
+        store.now = now
         store.config = TimerConfig.default
         store.snapshot = TimerSnapshot(
             sessionType: .focus,
@@ -154,5 +157,26 @@ struct TimerStoreTests {
         #expect(store.sessionType == .longBreak)
         #expect(store.timerState == .idle)
         #expect(store.boundaryStopPolicy == .none)
+    }
+
+    @Test func remainingTime_recomputesWhenNowChanges() {
+        let store = TimerStore()
+        let base = Date(timeIntervalSince1970: 10000)
+        store.now = base
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: base,
+            endDate: base.addingTimeInterval(120),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        #expect(store.formattedRemainingTime == "02:00")
+
+        store.now = base.addingTimeInterval(61)
+        #expect(store.formattedRemainingTime == "00:59")
     }
 }

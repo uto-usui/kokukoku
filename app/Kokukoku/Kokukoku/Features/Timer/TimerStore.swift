@@ -7,16 +7,6 @@ import SwiftUI
     import UIKit
 #endif
 
-private struct SessionRecordPayload {
-    let sessionType: SessionType
-    let startedAt: Date
-    let endedAt: Date
-    let plannedDurationSec: Int
-    let actualDurationSec: Int
-    let completed: Bool
-    let skipped: Bool
-}
-
 @MainActor
 @Observable
 final class TimerStore {
@@ -24,6 +14,7 @@ final class TimerStore {
     var config: TimerConfig = .default
     var notificationAuthorizationState: NotificationAuthorizationState = .unknown
     var lastErrorMessage: String?
+    var now: Date = .init()
 
     @ObservationIgnored private var modelContext: ModelContext?
     @ObservationIgnored private var preferences: UserTimerPreferences?
@@ -52,7 +43,7 @@ final class TimerStore {
             timerState: self.snapshot.timerState,
             endDate: self.snapshot.endDate,
             pausedRemainingSec: self.snapshot.pausedRemainingSec,
-            now: Date(),
+            now: self.now,
             fallbackDurationSec: fallback
         )
     }
@@ -95,6 +86,7 @@ final class TimerStore {
 extension TimerStore {
     func bind(modelContext: ModelContext) {
         self.modelContext = modelContext
+        self.now = Date()
         self.startTickerIfNeeded()
         self.loadPreferencesIfNeeded()
         self.refreshNotificationAuthorizationState()
@@ -106,6 +98,7 @@ extension TimerStore {
             return
         }
 
+        self.now = Date()
         self.refreshNotificationAuthorizationState()
         self.processElapsedSessionsIfNeeded()
     }
@@ -123,6 +116,7 @@ extension TimerStore {
 
     func start() {
         let now = Date()
+        self.now = now
         let duration = TimerEngine.duration(for: self.snapshot.sessionType, config: self.config)
 
         self.snapshot.startedAt = now
@@ -138,6 +132,7 @@ extension TimerStore {
             return
         }
 
+        self.now = Date()
         self.snapshot.pausedRemainingSec = max(0, Int(ceil(endDate.timeIntervalSinceNow)))
         self.snapshot.endDate = nil
         self.snapshot.timerState = .paused
@@ -150,6 +145,7 @@ extension TimerStore {
         }
 
         let now = Date()
+        self.now = now
         let fallback = TimerEngine.duration(for: self.snapshot.sessionType, config: self.config)
         let remaining = max(1, self.snapshot.pausedRemainingSec ?? fallback)
 
@@ -165,6 +161,7 @@ extension TimerStore {
     }
 
     func reset() {
+        self.now = Date()
         self.snapshot.timerState = .idle
         self.snapshot.startedAt = nil
         self.snapshot.endDate = nil
@@ -173,6 +170,7 @@ extension TimerStore {
     }
 
     func skip() {
+        self.now = Date()
         self.completeCurrentSession(at: Date(), dueToSkip: true)
     }
 
@@ -228,6 +226,7 @@ extension TimerStore {
             }
 
             Task { @MainActor in
+                self.now = Date()
                 self.processElapsedSessionsIfNeeded()
             }
         }
@@ -237,7 +236,7 @@ extension TimerStore {
         while true {
             guard self.snapshot.timerState == .running,
                   let endDate = self.snapshot.endDate,
-                  endDate <= Date()
+                  endDate <= self.now
             else {
                 break
             }
