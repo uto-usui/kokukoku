@@ -64,6 +64,26 @@ app/Kokukoku/Kokukoku/
 - **Session transitions**: Focus → Short/Long Break → Focus. Long break triggers every N focus completions (default 4). `BoundaryStopPolicy` controls auto-advance behavior.
 - **Prefer pure SwiftUI** and SF Symbols. No third-party UI dependencies.
 
+## XcodeBuildMCP
+
+This project has XcodeBuildMCP configured as an MCP server. Prefer MCP tools over raw `xcodebuild` commands for build, test, and simulator operations — errors are returned as structured data.
+
+**Session defaults** (set at session start):
+```
+projectPath: app/Kokukoku/Kokukoku.xcodeproj
+scheme: Kokukoku
+configuration: Debug
+simulatorId: (use list_sims to find a booted iPhone simulator)
+```
+
+**Typical workflow:**
+1. `session_show_defaults` → confirm project/scheme/simulator are set
+2. `build_sim` → compile for iOS Simulator
+3. `test_sim` with `extraArgs: ["-only-testing:KokukokuTests"]` → run unit tests
+4. `test_sim` with `extraArgs: ["-only-testing:KokukokuTests/TestClassName/testMethodName"]` → run a single test
+
+For macOS-only builds/tests, fall back to `make build-macos` / `make test-macos`.
+
 ## Code Style
 
 - SwiftFormat (Swift 6): 4-space indent, 120 char max width, LF line endings, explicit `self`
