@@ -179,4 +179,47 @@ struct TimerStoreTests {
         store.now = base.addingTimeInterval(61)
         #expect(store.formattedRemainingTime == "00:59")
     }
+
+    @Test func skipOnFocus_advancesCycleCount() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-300),
+            endDate: now.addingTimeInterval(600),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.skip()
+
+        #expect(store.completedFocusCount == 1)
+        #expect(store.sessionType == .shortBreak)
+    }
+
+    @Test func reset_resetsCycleToZeroAndFocus() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .longBreak,
+            timerState: .paused,
+            startedAt: now.addingTimeInterval(-500),
+            endDate: nil,
+            pausedRemainingSec: 100,
+            completedFocusCount: 3,
+            boundaryStopPolicy: .stopAtLongBreak
+        )
+
+        store.reset()
+
+        #expect(store.completedFocusCount == 0)
+        #expect(store.sessionType == .focus)
+        #expect(store.timerState == .idle)
+    }
 }

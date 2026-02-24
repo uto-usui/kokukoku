@@ -163,9 +163,11 @@ extension TimerStore {
     func reset() {
         self.now = Date()
         self.snapshot.timerState = .idle
+        self.snapshot.sessionType = .focus
         self.snapshot.startedAt = nil
         self.snapshot.endDate = nil
         self.snapshot.pausedRemainingSec = nil
+        self.snapshot.completedFocusCount = 0
         self.notificationService.cancelSessionEndNotification()
     }
 
@@ -299,8 +301,8 @@ extension TimerStore {
         self.persistSessionRecord(payload)
     }
 
-    private func nextCompletedFocusCount(currentType: SessionType, dueToSkip: Bool) -> Int {
-        guard currentType == .focus, !dueToSkip else {
+    private func nextCompletedFocusCount(currentType: SessionType, dueToSkip _: Bool) -> Int {
+        guard currentType == .focus else {
             return self.snapshot.completedFocusCount
         }
 
