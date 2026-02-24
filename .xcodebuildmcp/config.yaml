@@ -1,0 +1,8 @@
+schemaVersion: 1
+
+enabledWorkflows: ["simulator", "ui-automation", "debugging"]
+
+sessionDefaults:
+  projectPath: "app/Kokukoku/Kokukoku.xcodeproj"
+  scheme: "Kokukoku"
+  configuration: "Debug"
