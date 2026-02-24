@@ -1,0 +1,8 @@
+--swiftversion 6
+--indent 4
+--maxwidth 120
+--linebreaks lf
+--commas inline
+--trimwhitespace always
+--self insert
+--stripunusedargs closure-only

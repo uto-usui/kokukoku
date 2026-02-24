@@ -8,6 +8,8 @@ This workspace is prepared for building a native `iOS + macOS` Pomodoro app with
 cd /Users/usui.y/work/uto/pomodoro-timer
 make bootstrap
 make doctor
+make lint
+make test-macos
 ```
 
 If `bootstrap` fails with `Homebrew prefix is not writable`, run:
@@ -23,14 +25,26 @@ sudo chown -R usui.y:admin /opt/homebrew && sudo chmod -R u+w /opt/homebrew
 - `xcbeautify`
 - `xcodegen`
 
-## Create the app project
+## Current Project
 
-1. Open Xcode.
-2. Create a new **Multiplatform App** project.
-3. Product name example: `PomodoroTimer`.
-4. Interface: `SwiftUI`, Language: `Swift`, Data storage: `SwiftData`.
-5. Save it under:
-   `/Users/usui.y/work/uto/pomodoro-timer/app`
+- App name: `Kokukoku`
+- Xcode project: `/Users/usui.y/work/uto/pomodoro-timer/app/Kokukoku/Kokukoku.xcodeproj`
+- Scheme: `Kokukoku`
+
+## Make targets
+
+```bash
+make help
+```
+
+Main commands:
+
+- `make format`
+- `make lint`
+- `make build-macos`
+- `make test-macos` (unit tests)
+- `make test-ui-macos` (UI tests)
+- `make ci`
 
 ## LLM-first workflow (recommended)
 
@@ -41,3 +55,4 @@ cursor /Users/usui.y/work/uto/pomodoro-timer
 - Use Cursor for implementation.
 - Use Xcode for signing, simulator, profiling, archive, TestFlight.
 - Run `make doctor` before starting work.
+- Run `make ci` before commit/push.

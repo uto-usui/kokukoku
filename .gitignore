@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Editor / local tool state
+.idea/
+.vscode/
+.cursor/
+
+# Xcode user state
+xcuserdata/
+**/xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+
+# Build artifacts
+build/
+DerivedData/
+**/DerivedData/
+.build/
+.swiftpm/
+
+# Fastlane artifacts (if added later)
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output/

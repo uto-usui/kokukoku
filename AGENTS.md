@@ -23,6 +23,10 @@ This repository is for an Apple-native Pomodoro timer app.
 ```bash
 make bootstrap
 make doctor
+make format
+make lint
+make test-macos
+make ci
 ```
 
 ## Definition of Done

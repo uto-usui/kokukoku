@@ -1,0 +1,40 @@
+included:
+  - app/Kokukoku/Kokukoku
+  - app/Kokukoku/KokukokuTests
+  - app/Kokukoku/KokukokuUITests
+
+excluded:
+  - app/Kokukoku/Kokukoku.xcodeproj
+
+reporter: xcode
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - first_where
+  - sorted_first_last
+
+disabled_rules:
+  - trailing_whitespace
+
+line_length:
+  warning: 140
+  error: 180
+  ignores_comments: true
+  ignores_urls: true
+
+type_body_length:
+  warning: 300
+  error: 450
+
+file_length:
+  warning: 500
+  error: 900
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - x
+    - y
