@@ -1,5 +1,6 @@
 import Foundation
 @testable import Kokukoku
+import SwiftUI
 import Testing
 
 struct TimerEngineTests {
@@ -84,5 +85,74 @@ struct TimerEngineTests {
 
         #expect(decision.shouldStop)
         #expect(!decision.consumePolicy)
+    }
+}
+
+@MainActor
+struct TimerStoreTests {
+    @Test func restoreFromElapsedRunningSession_transitionsToNextSession() {
+        let store = TimerStore()
+        let now = Date()
+
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-1500),
+            endDate: now.addingTimeInterval(-5),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        #expect(store.sessionType == .shortBreak)
+        #expect(store.timerState == .running)
+        #expect(store.completedFocusCount == 1)
+    }
+
+    @Test func restoreWithAutoStartOff_stopsAtBoundary() {
+        let store = TimerStore()
+        let now = Date()
+        var config = TimerConfig.default
+        config.autoStart = false
+        store.config = config
+
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-1500),
+            endDate: now.addingTimeInterval(-1),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        #expect(store.sessionType == .shortBreak)
+        #expect(store.timerState == .idle)
+    }
+
+    @Test func stopAtLongBreak_policyStopsAndConsumesPolicy() {
+        let store = TimerStore()
+        let now = Date()
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-1500),
+            endDate: now.addingTimeInterval(-1),
+            pausedRemainingSec: nil,
+            completedFocusCount: 3,
+            boundaryStopPolicy: .stopAtLongBreak
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        #expect(store.sessionType == .longBreak)
+        #expect(store.timerState == .idle)
+        #expect(store.boundaryStopPolicy == .none)
     }
 }

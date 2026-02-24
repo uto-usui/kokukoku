@@ -32,6 +32,7 @@ struct TimerScreen: View {
             .font(.system(size: 74, weight: .bold, design: .rounded))
             .monospacedDigit()
             .accessibilityLabel("Remaining time \(self.store.formattedRemainingTime)")
+            .accessibilityIdentifier("timer.remaining")
     }
 
     private var progressDisplay: some View {
@@ -50,6 +51,7 @@ struct TimerScreen: View {
                 self.store.performPrimaryAction()
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityIdentifier("timer.primaryAction")
 
             HStack(spacing: 10) {
                 Button("Reset") {
@@ -57,11 +59,13 @@ struct TimerScreen: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(!self.store.canReset)
+                .accessibilityIdentifier("timer.reset")
 
                 Button("Skip") {
                     self.store.skip()
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("timer.skip")
             }
         }
     }
