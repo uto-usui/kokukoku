@@ -222,4 +222,27 @@ struct TimerStoreTests {
         #expect(store.sessionType == .focus)
         #expect(store.timerState == .idle)
     }
+
+    @Test func skipWhilePaused_keepsPausedForNextSession() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .paused,
+            startedAt: now.addingTimeInterval(-500),
+            endDate: nil,
+            pausedRemainingSec: 30,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.skip()
+
+        #expect(store.completedFocusCount == 1)
+        #expect(store.sessionType == .shortBreak)
+        #expect(store.timerState == .paused)
+        #expect(store.remainingSeconds == TimerConfig.default.shortBreakDurationSec)
+    }
 }

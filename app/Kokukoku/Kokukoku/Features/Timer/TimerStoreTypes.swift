@@ -9,3 +9,12 @@ struct SessionRecordPayload {
     let completed: Bool
     let skipped: Bool
 }
+
+struct BoundaryTransitionContext {
+    let endedAt: Date
+    let nextType: SessionType
+    let nextCompletedFocusCount: Int
+    let decision: (shouldStop: Bool, consumePolicy: Bool)
+    let dueToSkip: Bool
+    let sourceState: TimerState
+}

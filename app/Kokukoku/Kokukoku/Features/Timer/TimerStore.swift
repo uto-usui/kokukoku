@@ -16,8 +16,8 @@ final class TimerStore {
     var lastErrorMessage: String?
     var now: Date = .init()
 
-    @ObservationIgnored private var modelContext: ModelContext?
-    @ObservationIgnored private var preferences: UserTimerPreferences?
+    @ObservationIgnored var modelContext: ModelContext?
+    @ObservationIgnored var preferences: UserTimerPreferences?
     @ObservationIgnored private let notificationService = NotificationService()
     @ObservationIgnored private var ticker: Timer?
 
@@ -248,6 +248,7 @@ extension TimerStore {
 
     private func completeCurrentSession(at endedAt: Date, dueToSkip: Bool) {
         self.notificationService.cancelSessionEndNotification()
+        let sourceState = self.snapshot.timerState
 
         let currentType = self.snapshot.sessionType
         let plannedDuration = TimerEngine.duration(for: currentType, config: self.config)
@@ -255,7 +256,8 @@ extension TimerStore {
             currentType: currentType,
             endedAt: endedAt,
             plannedDuration: plannedDuration,
-            dueToSkip: dueToSkip
+            dueToSkip: dueToSkip,
+            sourceState: sourceState
         )
 
         let nextCompletedFocusCount = self.nextCompletedFocusCount(currentType: currentType, dueToSkip: dueToSkip)
@@ -273,10 +275,14 @@ extension TimerStore {
         )
 
         self.applyBoundaryTransition(
-            endedAt: endedAt,
-            nextType: nextType,
-            nextCompletedFocusCount: nextCompletedFocusCount,
-            decision: decision
+            BoundaryTransitionContext(
+                endedAt: endedAt,
+                nextType: nextType,
+                nextCompletedFocusCount: nextCompletedFocusCount,
+                decision: decision,
+                dueToSkip: dueToSkip,
+                sourceState: sourceState
+            )
         )
 
         #if os(iOS)
@@ -284,9 +290,24 @@ extension TimerStore {
         #endif
     }
 
-    private func persistRecordIfNeeded(currentType: SessionType, endedAt: Date, plannedDuration: Int, dueToSkip: Bool) {
+    private func persistRecordIfNeeded(
+        currentType: SessionType,
+        endedAt: Date,
+        plannedDuration: Int,
+        dueToSkip: Bool,
+        sourceState: TimerState
+    ) {
         guard let startedAt = self.snapshot.startedAt else {
             return
+        }
+
+        let actualDurationSec: Int
+        switch sourceState {
+        case .paused:
+            let pausedRemaining = self.snapshot.pausedRemainingSec ?? plannedDuration
+            actualDurationSec = max(0, plannedDuration - pausedRemaining)
+        case .running, .idle:
+            actualDurationSec = max(0, Int(endedAt.timeIntervalSince(startedAt)))
         }
 
         let payload = SessionRecordPayload(
@@ -294,7 +315,7 @@ extension TimerStore {
             startedAt: startedAt,
             endedAt: endedAt,
             plannedDurationSec: plannedDuration,
-            actualDurationSec: max(0, Int(endedAt.timeIntervalSince(startedAt))),
+            actualDurationSec: actualDurationSec,
             completed: !dueToSkip,
             skipped: dueToSkip
         )
@@ -309,32 +330,36 @@ extension TimerStore {
         return self.snapshot.completedFocusCount + 1
     }
 
-    private func applyBoundaryTransition(
-        endedAt: Date,
-        nextType: SessionType,
-        nextCompletedFocusCount: Int,
-        decision: (shouldStop: Bool, consumePolicy: Bool)
-    ) {
-        self.snapshot.completedFocusCount = nextCompletedFocusCount
-        self.snapshot.sessionType = nextType
+    private func applyBoundaryTransition(_ context: BoundaryTransitionContext) {
+        self.snapshot.completedFocusCount = context.nextCompletedFocusCount
+        self.snapshot.sessionType = context.nextType
         self.snapshot.pausedRemainingSec = nil
 
-        if decision.consumePolicy {
+        if context.decision.consumePolicy {
             self.snapshot.boundaryStopPolicy = .none
             self.persistPreferences()
         }
 
-        if decision.shouldStop {
+        if context.dueToSkip, context.sourceState == .paused {
+            let nextDuration = TimerEngine.duration(for: context.nextType, config: self.config)
+            self.snapshot.timerState = .paused
+            self.snapshot.startedAt = nil
+            self.snapshot.endDate = nil
+            self.snapshot.pausedRemainingSec = nextDuration
+            return
+        }
+
+        if context.decision.shouldStop {
             self.snapshot.timerState = .idle
             self.snapshot.startedAt = nil
             self.snapshot.endDate = nil
             return
         }
 
-        let nextDuration = TimerEngine.duration(for: nextType, config: self.config)
+        let nextDuration = TimerEngine.duration(for: context.nextType, config: self.config)
         self.snapshot.timerState = .running
-        self.snapshot.startedAt = endedAt
-        self.snapshot.endDate = endedAt.addingTimeInterval(TimeInterval(nextDuration))
+        self.snapshot.startedAt = context.endedAt
+        self.snapshot.endDate = context.endedAt.addingTimeInterval(TimeInterval(nextDuration))
         self.requestNotificationPermissionAndScheduleIfNeeded()
     }
 
@@ -389,106 +414,6 @@ extension TimerStore {
             Task { @MainActor in
                 self?.notificationAuthorizationState = state
             }
-        }
-    }
-
-    private func loadPreferencesIfNeeded() {
-        guard self.preferences == nil, let modelContext = self.modelContext else {
-            return
-        }
-
-        do {
-            var descriptor = FetchDescriptor<UserTimerPreferences>()
-            descriptor.fetchLimit = 1
-
-            if let stored = try modelContext.fetch(descriptor).first {
-                self.preferences = stored
-                self.applyPreferences(stored)
-                return
-            }
-
-            let defaults = UserTimerPreferences(
-                focusDurationSec: TimerConfig.default.focusDurationSec,
-                shortBreakDurationSec: TimerConfig.default.shortBreakDurationSec,
-                longBreakDurationSec: TimerConfig.default.longBreakDurationSec,
-                longBreakFrequency: TimerConfig.default.longBreakFrequency,
-                autoStart: TimerConfig.default.autoStart,
-                notificationSoundEnabled: TimerConfig.default.notificationSoundEnabled,
-                boundaryStopPolicyRaw: BoundaryStopPolicy.none.rawValue
-            )
-
-            modelContext.insert(defaults)
-            try modelContext.save()
-            self.preferences = defaults
-            self.applyPreferences(defaults)
-        } catch {
-            self.lastErrorMessage = "Failed to load preferences: \(error.localizedDescription)"
-        }
-    }
-
-    private func applyPreferences(_ preferences: UserTimerPreferences) {
-        self.config = TimerConfig(
-            focusDurationSec: max(60, preferences.focusDurationSec),
-            shortBreakDurationSec: max(60, preferences.shortBreakDurationSec),
-            longBreakDurationSec: max(60, preferences.longBreakDurationSec),
-            longBreakFrequency: max(1, preferences.longBreakFrequency),
-            autoStart: preferences.autoStart,
-            notificationSoundEnabled: preferences.notificationSoundEnabled
-        )
-
-        self.snapshot.boundaryStopPolicy = preferences.boundaryStopPolicy
-    }
-
-    private func persistPreferences() {
-        guard let modelContext = self.modelContext else {
-            return
-        }
-
-        if self.preferences == nil {
-            self.loadPreferencesIfNeeded()
-        }
-
-        guard let preferences = self.preferences else {
-            return
-        }
-
-        preferences.focusDurationSec = self.config.focusDurationSec
-        preferences.shortBreakDurationSec = self.config.shortBreakDurationSec
-        preferences.longBreakDurationSec = self.config.longBreakDurationSec
-        preferences.longBreakFrequency = self.config.longBreakFrequency
-        preferences.autoStart = self.config.autoStart
-        preferences.notificationSoundEnabled = self.config.notificationSoundEnabled
-        preferences.boundaryStopPolicy = self.snapshot.boundaryStopPolicy
-        preferences.updatedAt = Date()
-
-        do {
-            try modelContext.save()
-        } catch {
-            self.lastErrorMessage = "Failed to save preferences: \(error.localizedDescription)"
-        }
-    }
-
-    private func persistSessionRecord(_ payload: SessionRecordPayload) {
-        guard let modelContext = self.modelContext else {
-            return
-        }
-
-        let record = SessionRecord(
-            sessionTypeRaw: payload.sessionType.rawValue,
-            startedAt: payload.startedAt,
-            endedAt: payload.endedAt,
-            plannedDurationSec: payload.plannedDurationSec,
-            actualDurationSec: payload.actualDurationSec,
-            completed: payload.completed,
-            skipped: payload.skipped
-        )
-
-        modelContext.insert(record)
-
-        do {
-            try modelContext.save()
-        } catch {
-            self.lastErrorMessage = "Failed to save session record: \(error.localizedDescription)"
         }
     }
 }
