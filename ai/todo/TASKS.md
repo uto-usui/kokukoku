@@ -2,6 +2,7 @@
 
 ## M0. Planning Lock (Before Implementation)
 - [ ] Finalize Phase 1 scope boundaries from `PLAN.md`.
+- [ ] Confirm behavior details against `PHASE1_SPEC.md`.
 - [ ] Lock UI composition rules:
   - [ ] Navigation model (`NavigationStack` on iOS, `NavigationSplitView` on macOS)
   - [ ] Primary/secondary button styles
@@ -74,6 +75,7 @@
 - [ ] Final validation:
   - [ ] `make lint`
   - [ ] `make test-macos`
+- [ ] Pass all checks in `RELEASE_CHECKLIST.md`.
 
 ## Phase 2 Backlog (Not in MVP)
 - [ ] MenuBarExtra (macOS)

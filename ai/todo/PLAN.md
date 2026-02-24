@@ -94,3 +94,7 @@
 - Notification behavior matches settings (Sound ON / Silent).
 - History is stored and viewable.
 - `make lint` and `make test-macos` pass.
+
+## 9. Planning Artifacts
+- Detailed behavior spec: `PHASE1_SPEC.md`
+- Release acceptance gate: `RELEASE_CHECKLIST.md`
