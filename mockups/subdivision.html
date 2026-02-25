@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kokukoku — Subdivision Visual Mockup</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1a1a1a; --fg-secondary: #888; --control-bg: #f5f5f5; --control-border: #ddd; }
+  [data-theme="dark"] { --bg: #1a1a1a; --fg: #f0f0f0; --fg-secondary: #888; --control-bg: #2a2a2a; --control-border: #444; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 24px;
+    transition: background 0.3s, color 0.3s;
+  }
+  h1 { font-size: 14px; font-weight: 500; color: var(--fg-secondary); letter-spacing: 0.5px; margin-bottom: 8px; }
+  .session-label { font-size: 16px; font-weight: 500; color: var(--fg-secondary); margin-bottom: 16px; }
+  .canvas-container { position: relative; width: min(440px, 88vw); height: min(440px, 88vw); margin-bottom: 8px; }
+  canvas { width: 100%; height: 100%; border-radius: 16px; }
+  .timer-overlay {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--fg); opacity: 0.55; letter-spacing: 1px;
+  }
+  .cycle-label { font-size: 13px; color: var(--fg-secondary); margin-bottom: 20px; }
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 12px; width: min(440px, 88vw); }
+  .slider-row { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .slider-row label { font-size: 13px; font-weight: 500; color: var(--fg-secondary); min-width: 72px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--fg-secondary); }
+  .slider-row .value { font-size: 13px; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 44px; text-align: right; }
+  .button-row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    padding: 6px 16px; border-radius: 8px;
+    border: 1px solid var(--control-border);
+    background: var(--control-bg); color: var(--fg);
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.7; }
+  button.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .params-display {
+    margin-top: 16px; padding: 12px 16px;
+    background: var(--control-bg); border-radius: 10px;
+    font-size: 12px; font-family: 'SF Mono', 'Menlo', monospace;
+    color: var(--fg-secondary); width: min(440px, 88vw); line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+  <h1>KOKUKOKU</h1>
+  <div class="session-label" id="sessionLabel">Focus</div>
+  <div class="canvas-container">
+    <canvas id="canvas" width="800" height="800"></canvas>
+    <div class="timer-overlay" id="timerOverlay">25:00</div>
+  </div>
+  <div class="cycle-label" id="cycleLabel">Cycle: 0/4</div>
+  <div class="controls">
+    <div class="slider-row">
+      <label>Progress</label>
+      <input type="range" id="progressSlider" min="0" max="10000" value="0">
+      <span class="value" id="progressValue">0.0%</span>
+    </div>
+    <div class="button-row">
+      <button id="btnFocus" class="active">Focus</button>
+      <button id="btnShortBreak">Short Break</button>
+      <button id="btnLongBreak">Long Break</button>
+    </div>
+    <div class="button-row">
+      <button id="btnPlay">Play Animation</button>
+      <button id="btnTheme">Dark Mode</button>
+    </div>
+  </div>
+  <div class="params-display" id="paramsDisplay"></div>
+
+<script>
+// ==========================================================================
+//  Mandala Subdivision Visual — Line-Art Edition
+//
+//  Built from distinct visual zones, each with unique motifs:
+//    A. Center flower (lotus petals)
+//    B. Inner scaffold (rings + primary radial lines)
+//    C. Inner leaves (closed teardrop shapes)
+//    D. Middle lattice (secondary divisions + woven arcs)
+//    E. Outer filigree (fine arcs + intersection dots)
+//    F. Border crown (scalloped outer ring)
+//
+//  Every element is traced like a pen drawing it.
+// ==========================================================================
+
+const TWO_PI = Math.PI * 2;
+const HALF_PI = Math.PI / 2;
+
+// --- Math ---
+
+function smootherstep(e0, e1, x) {
+  const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Quadratic bezier point at parameter t
+function qbPoint(p0x, p0y, cpx, cpy, p2x, p2y, t) {
+  const mt = 1 - t;
+  return { x: mt*mt*p0x + 2*mt*t*cpx + t*t*p2x, y: mt*mt*p0y + 2*mt*t*cpy + t*t*p2y };
+}
+
+// Draw partial quadratic bezier from t=0 to t=tEnd
+function traceQBez(ctx, p0x, p0y, cpx, cpy, p2x, p2y, tEnd) {
+  if (tEnd <= 0) return;
+  const segs = Math.max(12, Math.ceil(tEnd * 32));
+  ctx.beginPath();
+  ctx.moveTo(p0x, p0y);
+  for (let i = 1; i <= segs; i++) {
+    const t = (i / segs) * tEnd;
+    const pt = qbPoint(p0x, p0y, cpx, cpy, p2x, p2y, t);
+    ctx.lineTo(pt.x, pt.y);
+  }
+  ctx.stroke();
+}
+
+// Schedule helper: returns traceT (0→1) for progress
+function sched(startP, endP, progress) {
+  return smootherstep(startP, endP, progress);
+}
+
+// ==========================================================================
+//  Ring layout — non-uniform spacing for visual zones
+// ==========================================================================
+
+// 7 structural rings with intentional spacing variation
+// [inner zone: tight] [gap] [middle zone] [gap] [outer zone: tight]
+const RING_RADII_FRACTIONS = [
+  0.10,  // ring 0: inner boundary (center flower fits inside)
+  0.18,  // ring 1: inner zone
+  0.28,  // ring 2: inner zone
+  0.40,  // ring 3: middle zone
+  0.54,  // ring 4: middle zone
+  0.70,  // ring 5: outer zone
+  0.85,  // ring 6: outer zone
+  1.00,  // ring 7: border
+];
+
+// ==========================================================================
+//  A. CENTER FLOWER — lotus petals
+// ==========================================================================
+
+function drawCenterFlower(ctx, cx, cy, maxR, progress, alpha) {
+  const NUM_PETALS = 6;
+  const innerR = maxR * 0.02;
+  const outerR = maxR * RING_RADII_FRACTIONS[0] * 0.92;
+
+  // Center dot
+  const dotT = sched(0.000, 0.015, progress);
+  if (dotT > 0) {
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.beginPath();
+    ctx.arc(cx, cy, lerp(0.5, 2.2, dotT), 0, TWO_PI);
+    ctx.fill();
+  }
+
+  // Petals: each is two mirrored bezier curves forming a closed leaf
+  for (let i = 0; i < NUM_PETALS; i++) {
+    const petalStart = 0.010 + i * 0.012;
+    const petalEnd = petalStart + 0.05;
+    const t = sched(petalStart, petalEnd, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / NUM_PETALS - HALF_PI;
+    const perpAngle = angle + HALF_PI;
+
+    const baseX = cx + Math.cos(angle) * innerR;
+    const baseY = cy + Math.sin(angle) * innerR;
+    const tipX = cx + Math.cos(angle) * outerR;
+    const tipY = cy + Math.sin(angle) * outerR;
+
+    const midR = (innerR + outerR) * 0.55;
+    const spread = outerR * 0.38;
+
+    // Left curve: base → tip
+    const cpLx = cx + Math.cos(angle) * midR + Math.cos(perpAngle) * spread;
+    const cpLy = cy + Math.sin(angle) * midR + Math.sin(perpAngle) * spread;
+    // Right curve: tip → base
+    const cpRx = cx + Math.cos(angle) * midR - Math.cos(perpAngle) * spread;
+    const cpRy = cy + Math.sin(angle) * midR - Math.sin(perpAngle) * spread;
+
+    ctx.globalAlpha = alpha * 0.75;
+    ctx.lineWidth = 1.1;
+
+    // First half of trace: draw left side (base → tip)
+    const leftT = Math.min(1, t * 2);
+    traceQBez(ctx, baseX, baseY, cpLx, cpLy, tipX, tipY, leftT);
+
+    // Second half: draw right side (tip → base)
+    const rightT = Math.max(0, (t - 0.5) * 2);
+    if (rightT > 0) {
+      traceQBez(ctx, tipX, tipY, cpRx, cpRy, baseX, baseY, rightT);
+    }
+  }
+}
+
+// ==========================================================================
+//  B. SCAFFOLD RINGS — traced arcs
+// ==========================================================================
+
+function drawScaffoldRings(ctx, cx, cy, maxR, progress, alpha) {
+  const schedules = [
+    // [ringIndex, startP, endP, alphaFactor]
+    [0, 0.06, 0.12, 0.45],   // inner boundary
+    [1, 0.10, 0.17, 0.40],
+    [2, 0.16, 0.24, 0.50],
+    [3, 0.28, 0.36, 0.50],
+    [4, 0.36, 0.44, 0.55],
+    [5, 0.48, 0.57, 0.55],
+    [6, 0.56, 0.65, 0.50],
+    [7, 0.70, 0.80, 0.65],   // outer border - drawn last, more prominent
+  ];
+
+  for (const [ri, sp, ep, af] of schedules) {
+    const t = sched(sp, ep, progress);
+    if (t < 0.001) continue;
+
+    const radius = maxR * RING_RADII_FRACTIONS[ri];
+    const startAngle = -HALF_PI + ri * 0.2; // slight rotation per ring
+    const sweepAngle = TWO_PI * t;
+
+    ctx.globalAlpha = alpha * af;
+    ctx.lineWidth = ri === 7 ? 1.4 : 1.0;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, startAngle, startAngle + sweepAngle);
+    ctx.stroke();
+  }
+}
+
+// ==========================================================================
+//  C. RADIAL LINES — extending outward in groups
+// ==========================================================================
+
+function drawRadialLines(ctx, cx, cy, maxR, progress, alpha) {
+  const innerR = maxR * RING_RADII_FRACTIONS[0];
+  const outerR = maxR * RING_RADII_FRACTIONS[7];
+
+  // 6 primary lines (after inner rings established)
+  for (let i = 0; i < 6; i++) {
+    const t = sched(0.13 + i * 0.012, 0.22 + i * 0.012, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / 6;
+    const endR = innerR + (outerR - innerR) * t;
+
+    ctx.globalAlpha = alpha * 0.40;
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * innerR, cy + Math.sin(angle) * innerR);
+    ctx.lineTo(cx + Math.cos(angle) * endR, cy + Math.sin(angle) * endR);
+    ctx.stroke();
+  }
+
+  // 6 secondary lines (between primaries, appear with middle zone)
+  for (let i = 0; i < 6; i++) {
+    const t = sched(0.30 + i * 0.010, 0.42 + i * 0.010, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / 6 + TWO_PI / 12;
+    const startR = maxR * RING_RADII_FRACTIONS[1];
+    const endR = startR + (outerR - startR) * t;
+
+    ctx.globalAlpha = alpha * 0.30;
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * startR, cy + Math.sin(angle) * startR);
+    ctx.lineTo(cx + Math.cos(angle) * endR, cy + Math.sin(angle) * endR);
+    ctx.stroke();
+  }
+
+  // 12 tertiary lines (full 24 division, outer zone)
+  for (let i = 0; i < 12; i++) {
+    const t = sched(0.50 + i * 0.006, 0.62 + i * 0.006, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / 12 + TWO_PI / 24;
+    const startR = maxR * RING_RADII_FRACTIONS[3];
+    const endR = startR + (outerR - startR) * t;
+
+    ctx.globalAlpha = alpha * 0.22;
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(angle) * startR, cy + Math.sin(angle) * startR);
+    ctx.lineTo(cx + Math.cos(angle) * endR, cy + Math.sin(angle) * endR);
+    ctx.stroke();
+  }
+}
+
+// ==========================================================================
+//  D. INNER LEAVES — closed teardrop shapes between rings 1-2
+// ==========================================================================
+
+function drawInnerLeaves(ctx, cx, cy, maxR, progress, alpha) {
+  const NUM = 6;
+  const ringInner = maxR * RING_RADII_FRACTIONS[1];
+  const ringOuter = maxR * RING_RADII_FRACTIONS[2];
+  const midR = (ringInner + ringOuter) / 2;
+  const leafLen = (ringOuter - ringInner) * 0.85;
+
+  for (let i = 0; i < NUM; i++) {
+    const t = sched(0.20 + i * 0.015, 0.32 + i * 0.015, progress);
+    if (t < 0.001) continue;
+
+    // Leaf points outward from center, positioned between two primary radial lines
+    const angle = (TWO_PI * i) / NUM + TWO_PI / (NUM * 2);
+    const perpAngle = angle + HALF_PI;
+
+    const baseX = cx + Math.cos(angle) * ringInner;
+    const baseY = cy + Math.sin(angle) * ringInner;
+    const tipX = cx + Math.cos(angle) * (ringInner + leafLen);
+    const tipY = cy + Math.sin(angle) * (ringInner + leafLen);
+
+    const spread = leafLen * 0.35;
+    const cpMidR = ringInner + leafLen * 0.45;
+    const cpLx = cx + Math.cos(angle) * cpMidR + Math.cos(perpAngle) * spread;
+    const cpLy = cy + Math.sin(angle) * cpMidR + Math.sin(perpAngle) * spread;
+    const cpRx = cx + Math.cos(angle) * cpMidR - Math.cos(perpAngle) * spread;
+    const cpRy = cy + Math.sin(angle) * cpMidR - Math.sin(perpAngle) * spread;
+
+    ctx.globalAlpha = alpha * 0.55;
+    ctx.lineWidth = 0.9;
+
+    const leftT = Math.min(1, t * 2);
+    traceQBez(ctx, baseX, baseY, cpLx, cpLy, tipX, tipY, leftT);
+
+    const rightT = Math.max(0, (t - 0.5) * 2);
+    if (rightT > 0) {
+      traceQBez(ctx, tipX, tipY, cpRx, cpRy, baseX, baseY, rightT);
+    }
+  }
+}
+
+// ==========================================================================
+//  E. MIDDLE PETALS — woven arcs on rings 3-4 (12 divisions)
+// ==========================================================================
+
+function drawMiddlePetals(ctx, cx, cy, maxR, progress, alpha) {
+  const divisions = 12;
+
+  for (let ri = 3; ri <= 4; ri++) {
+    const ringR = maxR * RING_RADII_FRACTIONS[ri];
+
+    for (let di = 0; di < divisions; di++) {
+      const t = sched(0.38 + ri * 0.04 + di * 0.003, 0.50 + ri * 0.04 + di * 0.003, progress);
+      if (t < 0.001) continue;
+
+      const angle1 = (TWO_PI * di) / divisions;
+      const angle2 = (TWO_PI * ((di + 1) % divisions)) / divisions;
+      const midAngle = angle1 + (angle2 - angle1) / 2;
+
+      const p1x = cx + Math.cos(angle1) * ringR;
+      const p1y = cy + Math.sin(angle1) * ringR;
+      const p2x = cx + Math.cos(angle2) * ringR;
+      const p2y = cy + Math.sin(angle2) * ringR;
+
+      // Alternating: even indices curve inward, odd curve outward
+      const depth = ringR * 0.16;
+      const dir = di % 2 === 0 ? -1 : 1;
+      const cpx = cx + Math.cos(midAngle) * (ringR + depth * dir);
+      const cpy = cy + Math.sin(midAngle) * (ringR + depth * dir);
+
+      ctx.globalAlpha = alpha * 0.38;
+      ctx.lineWidth = 0.8;
+      traceQBez(ctx, p1x, p1y, cpx, cpy, p2x, p2y, t);
+    }
+  }
+}
+
+// ==========================================================================
+//  F. OUTER FILIGREE — fine arcs on rings 5-6 (24 divisions) + dots
+// ==========================================================================
+
+function drawOuterFiligree(ctx, cx, cy, maxR, progress, alpha) {
+  const divisions = 24;
+
+  // Fine petal arcs
+  for (let ri = 5; ri <= 6; ri++) {
+    const ringR = maxR * RING_RADII_FRACTIONS[ri];
+
+    for (let di = 0; di < divisions; di++) {
+      const t = sched(0.58 + ri * 0.03 + di * 0.002, 0.72 + ri * 0.03 + di * 0.002, progress);
+      if (t < 0.001) continue;
+
+      const angle1 = (TWO_PI * di) / divisions;
+      const angle2 = (TWO_PI * ((di + 1) % divisions)) / divisions;
+      const midAngle = angle1 + (angle2 - angle1) / 2;
+
+      const p1x = cx + Math.cos(angle1) * ringR;
+      const p1y = cy + Math.sin(angle1) * ringR;
+      const p2x = cx + Math.cos(angle2) * ringR;
+      const p2y = cy + Math.sin(angle2) * ringR;
+
+      const depth = ringR * 0.10;
+      const cpx = cx + Math.cos(midAngle) * (ringR - depth);
+      const cpy = cy + Math.sin(midAngle) * (ringR - depth);
+
+      ctx.globalAlpha = alpha * 0.30;
+      ctx.lineWidth = 0.6;
+      traceQBez(ctx, p1x, p1y, cpx, cpy, p2x, p2y, t);
+    }
+  }
+
+  // Intersection dots on rings 4-6 at 12-division points
+  for (let ri = 4; ri <= 6; ri++) {
+    const ringR = maxR * RING_RADII_FRACTIONS[ri];
+    for (let di = 0; di < 12; di++) {
+      const t = sched(0.65 + ri * 0.02 + di * 0.003, 0.72 + ri * 0.02 + di * 0.003, progress);
+      if (t < 0.001) continue;
+
+      const angle = (TWO_PI * di) / 12;
+      const dx = cx + Math.cos(angle) * ringR;
+      const dy = cy + Math.sin(angle) * ringR;
+      const dotR = lerp(0.3, 1.8, t);
+
+      ctx.globalAlpha = alpha * 0.50 * t;
+      ctx.beginPath();
+      ctx.arc(dx, dy, dotR, 0, TWO_PI);
+      ctx.fill();
+    }
+  }
+}
+
+// ==========================================================================
+//  G. BORDER CROWN — scalloped decoration on outermost ring
+// ==========================================================================
+
+function drawBorderCrown(ctx, cx, cy, maxR, progress, alpha) {
+  const borderR = maxR * RING_RADII_FRACTIONS[7];
+  const scallops = 24;
+  const bumpR = maxR * 0.04; // size of each scallop bump
+
+  for (let i = 0; i < scallops; i++) {
+    const t = sched(0.82 + i * 0.004, 0.92 + i * 0.004, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / scallops;
+    const nextAngle = (TWO_PI * ((i + 1) % scallops)) / scallops;
+    const midAngle = angle + (nextAngle - angle) / 2;
+
+    // Scallop: small outward bump between two points on the border ring
+    const p1x = cx + Math.cos(angle) * borderR;
+    const p1y = cy + Math.sin(angle) * borderR;
+    const p2x = cx + Math.cos(nextAngle) * borderR;
+    const p2y = cy + Math.sin(nextAngle) * borderR;
+    const cpx = cx + Math.cos(midAngle) * (borderR + bumpR);
+    const cpy = cy + Math.sin(midAngle) * (borderR + bumpR);
+
+    ctx.globalAlpha = alpha * 0.45;
+    ctx.lineWidth = 0.9;
+    traceQBez(ctx, p1x, p1y, cpx, cpy, p2x, p2y, t);
+  }
+
+  // Small dots at scallop peaks
+  for (let i = 0; i < scallops; i++) {
+    const t = sched(0.90 + i * 0.003, 0.96 + i * 0.003, progress);
+    if (t < 0.001) continue;
+
+    const angle = (TWO_PI * i) / scallops + TWO_PI / (scallops * 2);
+    const dx = cx + Math.cos(angle) * (borderR + bumpR * 0.7);
+    const dy = cy + Math.sin(angle) * (borderR + bumpR * 0.7);
+
+    ctx.globalAlpha = alpha * 0.4 * t;
+    ctx.beginPath();
+    ctx.arc(dx, dy, lerp(0.3, 1.3, t), 0, TWO_PI);
+    ctx.fill();
+  }
+}
+
+// ==========================================================================
+//  H. OUTER LEAVES — larger leaf shapes between rings 5-7
+// ==========================================================================
+
+function drawOuterLeaves(ctx, cx, cy, maxR, progress, alpha) {
+  const NUM = 12;
+  const ringInner = maxR * RING_RADII_FRACTIONS[5];
+  const ringOuter = maxR * RING_RADII_FRACTIONS[7];
+  const leafLen = (ringOuter - ringInner) * 0.70;
+
+  for (let i = 0; i < NUM; i++) {
+    const t = sched(0.62 + i * 0.008, 0.78 + i * 0.008, progress);
+    if (t < 0.001) continue;
+
+    // Position between adjacent radial lines
+    const angle = (TWO_PI * i) / NUM + TWO_PI / (NUM * 2);
+    const perpAngle = angle + HALF_PI;
+
+    const baseX = cx + Math.cos(angle) * ringInner;
+    const baseY = cy + Math.sin(angle) * ringInner;
+    const tipX = cx + Math.cos(angle) * (ringInner + leafLen);
+    const tipY = cy + Math.sin(angle) * (ringInner + leafLen);
+
+    const spread = leafLen * 0.28;
+    const cpMidR = ringInner + leafLen * 0.45;
+    const cpLx = cx + Math.cos(angle) * cpMidR + Math.cos(perpAngle) * spread;
+    const cpLy = cy + Math.sin(angle) * cpMidR + Math.sin(perpAngle) * spread;
+    const cpRx = cx + Math.cos(angle) * cpMidR - Math.cos(perpAngle) * spread;
+    const cpRy = cy + Math.sin(angle) * cpMidR - Math.sin(perpAngle) * spread;
+
+    ctx.globalAlpha = alpha * 0.35;
+    ctx.lineWidth = 0.7;
+
+    const leftT = Math.min(1, t * 2);
+    traceQBez(ctx, baseX, baseY, cpLx, cpLy, tipX, tipY, leftT);
+
+    const rightT = Math.max(0, (t - 0.5) * 2);
+    if (rightT > 0) {
+      traceQBez(ctx, tipX, tipY, cpRx, cpRy, baseX, baseY, rightT);
+    }
+  }
+}
+
+// ==========================================================================
+//  MAIN DRAW
+// ==========================================================================
+
+function drawMandala(ctx, size, progress, decayOpacity) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size * 0.44;
+
+  ctx.clearRect(0, 0, size, size);
+
+  const fg = getComputedStyle(document.body).getPropertyValue('--fg').trim();
+  ctx.strokeStyle = fg;
+  ctx.fillStyle = fg;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const alpha = lerp(0.30, 0.90, smootherstep(0, 0.5, progress)) * decayOpacity;
+
+  // Draw each zone in order (back to front)
+  drawScaffoldRings(ctx, cx, cy, maxR, progress, alpha);
+  drawRadialLines(ctx, cx, cy, maxR, progress, alpha);
+  drawCenterFlower(ctx, cx, cy, maxR, progress, alpha);
+  drawInnerLeaves(ctx, cx, cy, maxR, progress, alpha);
+  drawMiddlePetals(ctx, cx, cy, maxR, progress, alpha);
+  drawOuterLeaves(ctx, cx, cy, maxR, progress, alpha);
+  drawOuterFiligree(ctx, cx, cy, maxR, progress, alpha);
+  drawBorderCrown(ctx, cx, cy, maxR, progress, alpha);
+
+  ctx.globalAlpha = 1;
+  return alpha / Math.max(0.001, decayOpacity);
+}
+
+// ==========================================================================
+//  UI
+// ==========================================================================
+
+let currentProgress = 0;
+let currentSession = 'focus';
+let isDark = false;
+let animationId = null;
+let animationStartTime = null;
+
+const DURATIONS = { focus: 25 * 60, shortBreak: 5 * 60, longBreak: 15 * 60 };
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const slider = document.getElementById('progressSlider');
+const progressValue = document.getElementById('progressValue');
+const timerOverlay = document.getElementById('timerOverlay');
+const sessionLabel = document.getElementById('sessionLabel');
+const paramsDisplay = document.getElementById('paramsDisplay');
+
+function setupCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function render() {
+  const size = canvas.getBoundingClientRect().width;
+  const isBreak = currentSession !== 'focus';
+  const drawProgress = isBreak ? 1.0 : currentProgress;
+  const decayOpacity = isBreak ? Math.max(0, 1.0 - currentProgress) : 1.0;
+
+  const baseAlpha = drawMandala(ctx, size, drawProgress, decayOpacity);
+
+  const duration = DURATIONS[currentSession];
+  const remaining = Math.round(duration * (1 - currentProgress));
+  timerOverlay.textContent =
+    String(Math.floor(remaining / 60)).padStart(2, '0') + ':' +
+    String(remaining % 60).padStart(2, '0');
+
+  paramsDisplay.textContent =
+    `progress: ${(drawProgress * 100).toFixed(1)}%  |  ` +
+    `alpha: ${baseAlpha.toFixed(3)}` +
+    (isBreak ? `  |  decay: ${decayOpacity.toFixed(3)}` : '');
+}
+
+slider.addEventListener('input', () => {
+  stopAnim();
+  currentProgress = slider.value / 10000;
+  progressValue.textContent = (currentProgress * 100).toFixed(1) + '%';
+  render();
+});
+
+function setSession(s) {
+  currentSession = s;
+  document.getElementById('btnFocus').classList.toggle('active', s === 'focus');
+  document.getElementById('btnShortBreak').classList.toggle('active', s === 'shortBreak');
+  document.getElementById('btnLongBreak').classList.toggle('active', s === 'longBreak');
+  sessionLabel.textContent = { focus: 'Focus', shortBreak: 'Short Break', longBreak: 'Long Break' }[s];
+  render();
+}
+
+document.getElementById('btnFocus').addEventListener('click', () => setSession('focus'));
+document.getElementById('btnShortBreak').addEventListener('click', () => setSession('shortBreak'));
+document.getElementById('btnLongBreak').addEventListener('click', () => setSession('longBreak'));
+
+function startAnim() {
+  if (animationId) { stopAnim(); return; }
+  document.getElementById('btnPlay').textContent = 'Stop';
+  const dur = currentSession === 'focus' ? 30000 : 12000;
+  animationStartTime = performance.now() - (currentProgress * dur);
+  function step(ts) {
+    currentProgress = Math.min(1, (ts - animationStartTime) / dur);
+    slider.value = currentProgress * 10000;
+    progressValue.textContent = (currentProgress * 100).toFixed(1) + '%';
+    render();
+    if (currentProgress < 1) animationId = requestAnimationFrame(step);
+    else stopAnim();
+  }
+  animationId = requestAnimationFrame(step);
+}
+
+function stopAnim() {
+  if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+  document.getElementById('btnPlay').textContent = 'Play Animation';
+}
+
+document.getElementById('btnPlay').addEventListener('click', startAnim);
+document.getElementById('btnTheme').addEventListener('click', () => {
+  isDark = !isDark;
+  document.body.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('btnTheme').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+  render();
+});
+
+window.addEventListener('resize', () => { setupCanvas(); render(); });
+setupCanvas();
+render();
+</script>
+</body>
+</html>

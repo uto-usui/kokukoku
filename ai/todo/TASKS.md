@@ -114,3 +114,50 @@
 - [x] Task 2: `WatchConnectivityService` の catch に `assertionFailure` 追加
 - [x] Task 3: sync ペイロード構築を純粋関数に分離しテスト追加
 - [x] Task 4: CLAUDE.md に Build Verification Strategy セクション追加
+
+## Audio & Haptics
+
+設計: `docs/plans/2026-02-25-audio-haptics-design.md`
+
+### Haptics 拡充
+- [ ] Start / Pause / Resume に UIImpactFeedbackGenerator 追加（TimerStore.swift、各1行）
+- [ ] 手動確認（iOS Simulator or 実機）
+
+### Focus Mode オプトアウト
+- [ ] TimerConfig に `respectFocusMode: Bool` 追加（default: true）
+- [ ] effectiveNotificationSoundEnabled の条件分岐修正
+- [ ] UserTimerPreferences に `respectFocusMode` 追加
+- [ ] persistPreferences / applyPreferences に読み書き追加
+- [ ] TimerStore に `updateRespectFocusMode()` 追加
+- [ ] SettingsScreen "System Focus" セクションに Toggle 追加
+- [ ] Unit test: respectFocusMode ON/OFF × isFocused の組み合わせ
+
+### アンビエントノイズ（ピンクノイズ）
+モックアップ: `mockups/ambient-noise.html`
+確定パラメータ: Pink noise, Cutoff 648 Hz, Resonance 1.0, Volume 50%, Fade 1.0s
+
+- [ ] AmbientNoiseServicing protocol 定義
+- [ ] AmbientNoiseService 実装（AVAudioEngine + AVAudioSourceNode + BiquadFilter、ピンクノイズ）
+- [ ] TimerConfig に `ambientNoiseEnabled` / `ambientNoiseVolume` 追加
+- [ ] UserTimerPreferences に追加 + persist/apply
+- [ ] TimerStore にライフサイクル制御追加（start/pause/resume/complete/scenePhase）
+- [ ] SettingsScreen "Audio" セクション追加（Toggle + Volume Slider）
+- [ ] Unit test: ライフサイクル制御（mock protocol）
+- [ ] Unit test: 設定の永続化
+- [ ] 手動確認（音質・ボリューム・他アプリとの共存）
+
+## Generative Mode (Pulse)
+
+設計: `docs/plans/2026-02-25-generative-mode-design.md`
+モックアップ: `mockups/pulse.html`
+
+- [x] 設計ドキュメント作成
+- [x] HTML モックアップ作成・パラメータ確定
+- [ ] Swift 実装計画作成
+- [ ] Swift 実装
+  - [ ] GenerativeVisual protocol + PulseVisual
+  - [ ] GenerativeTimerView (Canvas + TimelineView)
+  - [ ] TimerScreen integration
+  - [ ] Settings toggle (generativeModeEnabled)
+  - [ ] Unit tests (heartbeat envelope, ripple, decay, settings)
+  - [ ] Accessibility (reduceMotion fallback, VoiceOver)

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kokukoku — Ambient Noise Mockup</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1a1a1a; --fg-secondary: #888; --control-bg: #f5f5f5; --control-border: #ddd; --accent: #007aff; }
+  [data-theme="dark"] { --bg: #0e0e0e; --fg: #e8e8e8; --fg-secondary: #666; --control-bg: #1a1a1a; --control-border: #333; --accent: #0a84ff; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px;
+    transition: background 0.3s, color 0.3s;
+  }
+  h1 { font-size: 14px; font-weight: 500; color: var(--fg-secondary); letter-spacing: 0.5px; margin-bottom: 16px; }
+  .status-panel {
+    background: var(--control-bg); border: 1px solid var(--control-border);
+    border-radius: 12px; padding: 16px 24px; margin-bottom: 16px;
+    text-align: center; min-width: 300px;
+  }
+  .status-label { font-size: 13px; color: var(--fg-secondary); margin-bottom: 4px; }
+  .status-value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .status-session { font-size: 14px; color: var(--fg-secondary); margin-top: 4px; }
+  .visualizer {
+    width: min(400px, 80vw); height: 80px;
+    background: var(--control-bg); border: 1px solid var(--control-border);
+    border-radius: 8px; margin-bottom: 16px; overflow: hidden;
+  }
+  canvas { width: 100%; height: 100%; }
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: min(420px, 92vw); }
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--fg-secondary); text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 10px; margin-bottom: 2px; width: 100%; padding-left: 2px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .slider-row label { font-size: 12px; font-weight: 500; color: var(--fg-secondary); min-width: 90px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--fg-secondary); }
+  .slider-row .value { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 48px; text-align: right; }
+  .button-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    padding: 6px 16px; border-radius: 8px;
+    border: 1px solid var(--control-border);
+    background: var(--control-bg); color: var(--fg);
+    cursor: pointer; transition: opacity 0.15s, background 0.15s, color 0.15s;
+  }
+  button:hover { opacity: 0.7; }
+  button.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  button.accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .noise-types { display: flex; gap: 0; border: 1px solid var(--control-border); border-radius: 8px; overflow: hidden; }
+  .noise-types button { border: none; border-radius: 0; border-right: 1px solid var(--control-border); flex: 1; padding: 8px 10px; }
+  .noise-types button:last-child { border-right: none; }
+  .description {
+    font-size: 11px; color: var(--fg-secondary); line-height: 1.5;
+    max-width: 400px; text-align: center; margin-top: 4px;
+  }
+  .campfire-section { display: none; }
+  .campfire-section.visible { display: block; width: 100%; }
+</style>
+</head>
+<body>
+  <h1>KOKUKOKU — AMBIENT NOISE</h1>
+
+  <div class="status-panel">
+    <div class="status-label">Status</div>
+    <div class="status-value" id="statusValue">Stopped</div>
+    <div class="status-session" id="statusSession">Focus</div>
+  </div>
+
+  <div class="visualizer">
+    <canvas id="vizCanvas"></canvas>
+  </div>
+
+  <div class="controls">
+    <div class="section-label">Sound Type</div>
+    <div class="noise-types">
+      <button id="btnWhite">White</button>
+      <button id="btnPink" class="active">Pink</button>
+      <button id="btnBrown">Brown</button>
+      <button id="btnCampfire">Campfire</button>
+    </div>
+    <div class="description" id="noiseDescription">1/f spectrum — balanced across octaves. Natural-sounding, like rainfall.</div>
+
+    <div class="section-label">Volume</div>
+    <div class="slider-row">
+      <label>Master</label>
+      <input type="range" id="s_volume" min="0" max="100" value="50">
+      <span class="value" id="v_volume">50%</span>
+    </div>
+
+    <div class="section-label">Fade</div>
+    <div class="slider-row">
+      <label>Fade In</label>
+      <input type="range" id="s_fadeIn" min="0" max="30" value="10">
+      <span class="value" id="v_fadeIn">1.0s</span>
+    </div>
+    <div class="slider-row">
+      <label>Fade Out</label>
+      <input type="range" id="s_fadeOut" min="0" max="30" value="10">
+      <span class="value" id="v_fadeOut">1.0s</span>
+    </div>
+
+    <div class="section-label">EQ (Low-pass filter)</div>
+    <div class="slider-row">
+      <label>Cutoff</label>
+      <input type="range" id="s_cutoff" min="200" max="20000" value="648">
+      <span class="value" id="v_cutoff">648 Hz</span>
+    </div>
+    <div class="slider-row">
+      <label>Resonance</label>
+      <input type="range" id="s_resonance" min="0" max="20" value="1">
+      <span class="value" id="v_resonance">1.0</span>
+    </div>
+
+    <div class="campfire-section" id="campfireControls">
+      <div class="section-label">Campfire Layers</div>
+      <div class="slider-row">
+        <label>Base (rumble)</label>
+        <input type="range" id="s_cfBase" min="0" max="100" value="70">
+        <span class="value" id="v_cfBase">70%</span>
+      </div>
+      <div class="slider-row">
+        <label>Mid (whoosh)</label>
+        <input type="range" id="s_cfMid" min="0" max="100" value="40">
+        <span class="value" id="v_cfMid">40%</span>
+      </div>
+      <div class="slider-row">
+        <label>Crackle</label>
+        <input type="range" id="s_cfCrackle" min="0" max="100" value="50">
+        <span class="value" id="v_cfCrackle">50%</span>
+      </div>
+      <div class="slider-row">
+        <label>Crackle Rate</label>
+        <input type="range" id="s_cfRate" min="1" max="30" value="8">
+        <span class="value" id="v_cfRate">8/s</span>
+      </div>
+      <div class="slider-row">
+        <label>Pop Rate</label>
+        <input type="range" id="s_cfPopRate" min="0" max="10" value="2">
+        <span class="value" id="v_cfPopRate">2/s</span>
+      </div>
+    </div>
+
+    <div class="section-label">Simulate Timer</div>
+    <div class="button-row">
+      <button id="btnStart" class="accent">Start Focus</button>
+      <button id="btnPause">Pause</button>
+      <button id="btnBreak">Start Break</button>
+      <button id="btnStop">Stop</button>
+    </div>
+
+    <div class="button-row">
+      <button id="btnTheme">Dark Mode</button>
+    </div>
+  </div>
+
+<script>
+// ==========================================================================
+//  Audio Context & Nodes
+// ==========================================================================
+
+let audioCtx = null;
+let masterGain = null;
+let analyserNode = null;
+let isPlaying = false;
+let currentNoiseType = 'pink';
+let fadeInTime = 1.0;
+let fadeOutTime = 1.0;
+
+// Active audio nodes (cleaned up on stop)
+let activeNodes = [];
+
+// Brown noise state
+let brownLastOutput = 0;
+
+// Pink noise state (Voss-McCartney)
+const PINK_ROWS = 16;
+let pinkRunningSum = 0;
+let pinkRows = new Float32Array(PINK_ROWS);
+
+// Campfire state
+let cfBrownLast = 0;
+let cfPinkSum = 0;
+let cfPinkRows = new Float32Array(PINK_ROWS);
+let cfCrackleTimer = 0;
+let cfPopTimer = 0;
+
+// Campfire params
+let cfBaseVol = 0.70;
+let cfMidVol = 0.40;
+let cfCrackleVol = 0.50;
+let cfCrackleRate = 8;
+let cfPopRate = 2;
+
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0;
+
+  analyserNode = audioCtx.createAnalyser();
+  analyserNode.fftSize = 256;
+
+  masterGain.connect(analyserNode);
+  analyserNode.connect(audioCtx.destination);
+}
+
+// ==========================================================================
+//  Simple noise generators (white/pink/brown)
+// ==========================================================================
+
+function createSimpleNoiseChain() {
+  const bufferSize = 4096;
+  const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = parseFloat(document.getElementById('s_cutoff').value);
+  filter.Q.value = parseFloat(document.getElementById('s_resonance').value);
+
+  processor.onaudioprocess = function(e) {
+    const output = e.outputBuffer.getChannelData(0);
+    const len = output.length;
+    switch (currentNoiseType) {
+      case 'white': genWhite(output, len); break;
+      case 'pink':  genPink(output, len); break;
+      case 'brown': genBrown(output, len); break;
+    }
+  };
+
+  processor.connect(filter);
+  filter.connect(masterGain);
+
+  activeNodes.push(processor, filter);
+  // Store filter ref for live EQ updates
+  activeNodes._eqFilter = filter;
+}
+
+function genWhite(buf, len) {
+  for (let i = 0; i < len; i++) buf[i] = Math.random() * 2 - 1;
+}
+
+function genPink(buf, len) {
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    const row = Math.floor(Math.random() * PINK_ROWS);
+    pinkRunningSum -= pinkRows[row];
+    pinkRows[row] = w / PINK_ROWS;
+    pinkRunningSum += pinkRows[row];
+    buf[i] = (pinkRunningSum + w / PINK_ROWS) * 0.5;
+  }
+}
+
+function genBrown(buf, len) {
+  for (let i = 0; i < len; i++) {
+    const w = Math.random() * 2 - 1;
+    brownLastOutput = (brownLastOutput + 0.02 * w) / 1.02;
+    buf[i] = brownLastOutput * 3.5;
+  }
+}
+
+// ==========================================================================
+//  Campfire generator (3 layers in one processor)
+// ==========================================================================
+
+function createCampfireChain() {
+  const sampleRate = audioCtx.sampleRate;
+  const bufferSize = 4096;
+  const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+
+  // Base layer: brown noise → lowpass 300Hz
+  // Mid layer: pink noise → bandpass 400-1500Hz with LFO modulation
+  // Crackle layer: random short bursts of white noise
+
+  let lfoPhase = 0;
+
+  processor.onaudioprocess = function(e) {
+    const output = e.outputBuffer.getChannelData(0);
+    const len = output.length;
+    const dt = 1 / sampleRate;
+
+    for (let i = 0; i < len; i++) {
+      let sample = 0;
+
+      // --- Base layer: brown noise (low rumble) ---
+      const bw = Math.random() * 2 - 1;
+      cfBrownLast = (cfBrownLast + 0.02 * bw) / 1.02;
+      sample += cfBrownLast * 3.5 * cfBaseVol;
+
+      // --- Mid layer: pink noise with slow LFO volume ---
+      const pw = Math.random() * 2 - 1;
+      const prow = Math.floor(Math.random() * PINK_ROWS);
+      cfPinkSum -= cfPinkRows[prow];
+      cfPinkRows[prow] = pw / PINK_ROWS;
+      cfPinkSum += cfPinkRows[prow];
+      const pinkSample = (cfPinkSum + pw / PINK_ROWS) * 0.5;
+
+      lfoPhase += dt * 0.3; // slow ~0.3Hz modulation
+      if (lfoPhase > 1) lfoPhase -= 1;
+      const lfo = 0.6 + 0.4 * Math.sin(lfoPhase * Math.PI * 2);
+      sample += pinkSample * lfo * cfMidVol;
+
+      // --- Crackle layer: random impulse bursts ---
+      cfCrackleTimer -= dt;
+      if (cfCrackleTimer <= 0) {
+        // Schedule next crackle
+        cfCrackleTimer = 1 / (cfCrackleRate * (0.5 + Math.random()));
+      }
+      // Short burst (< 2ms) of high-freq noise when timer is very small
+      if (cfCrackleTimer < 0.002 && Math.random() < 0.5) {
+        const crackle = (Math.random() * 2 - 1) * cfCrackleVol;
+        sample += crackle;
+      }
+
+      // --- Pop layer: occasional louder low-mid burst ---
+      cfPopTimer -= dt;
+      if (cfPopTimer <= 0) {
+        cfPopTimer = 1 / (cfPopRate * (0.3 + Math.random() * 1.4));
+      }
+      if (cfPopTimer < 0.004 && cfPopRate > 0) {
+        const pop = (Math.random() * 2 - 1) * cfCrackleVol * 1.5;
+        sample += pop;
+      }
+
+      output[i] = sample * 0.5; // master scale to avoid clipping
+    }
+  };
+
+  // Campfire has its own internal filtering per-layer conceptually,
+  // but we add a gentle master lowpass to soften harsh edges
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = parseFloat(document.getElementById('s_cutoff').value);
+  filter.Q.value = parseFloat(document.getElementById('s_resonance').value);
+
+  processor.connect(filter);
+  filter.connect(masterGain);
+
+  activeNodes.push(processor, filter);
+  activeNodes._eqFilter = filter;
+}
+
+// ==========================================================================
+//  Playback Control
+// ==========================================================================
+
+function resetNoiseState() {
+  brownLastOutput = 0;
+  pinkRunningSum = 0;
+  pinkRows = new Float32Array(PINK_ROWS);
+  cfBrownLast = 0;
+  cfPinkSum = 0;
+  cfPinkRows = new Float32Array(PINK_ROWS);
+  cfCrackleTimer = 0;
+  cfPopTimer = 0;
+}
+
+function disconnectAll() {
+  for (const node of activeNodes) {
+    try { node.disconnect(); } catch (_) {}
+  }
+  activeNodes = [];
+  activeNodes._eqFilter = null;
+}
+
+function startNoise() {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  disconnectAll();
+  resetNoiseState();
+
+  if (currentNoiseType === 'campfire') {
+    createCampfireChain();
+  } else {
+    createSimpleNoiseChain();
+  }
+
+  const vol = parseFloat(document.getElementById('s_volume').value) / 100;
+  masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+  masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+  masterGain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + fadeInTime);
+
+  isPlaying = true;
+  updateStatus('Playing', currentSessionLabel());
+}
+
+function stopNoise() {
+  if (!isPlaying || !audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(now);
+  masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+  masterGain.gain.linearRampToValueAtTime(0, now + fadeOutTime);
+
+  setTimeout(() => { disconnectAll(); }, fadeOutTime * 1000 + 50);
+
+  isPlaying = false;
+  updateStatus('Stopped', currentSessionLabel());
+}
+
+function pauseNoise() {
+  if (!isPlaying || !audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  masterGain.gain.cancelScheduledValues(now);
+  masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+  masterGain.gain.linearRampToValueAtTime(0, now + fadeOutTime);
+
+  setTimeout(() => {
+    if (audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+  }, fadeOutTime * 1000 + 50);
+
+  isPlaying = false;
+  updateStatus('Paused', currentSessionLabel());
+}
+
+function resumeNoise() {
+  if (!audioCtx) return;
+  audioCtx.resume().then(() => {
+    const vol = parseFloat(document.getElementById('s_volume').value) / 100;
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+    masterGain.gain.linearRampToValueAtTime(vol, audioCtx.currentTime + fadeInTime);
+    isPlaying = true;
+    updateStatus('Playing', currentSessionLabel());
+  });
+}
+
+// ==========================================================================
+//  Visualizer
+// ==========================================================================
+
+const vizCanvas = document.getElementById('vizCanvas');
+const vizCtx = vizCanvas.getContext('2d');
+
+function setupVizCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = vizCanvas.getBoundingClientRect();
+  vizCanvas.width = rect.width * dpr;
+  vizCanvas.height = rect.height * dpr;
+  vizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawVisualizer() {
+  const w = vizCanvas.getBoundingClientRect().width;
+  const h = vizCanvas.getBoundingClientRect().height;
+  const isDark = document.body.hasAttribute('data-theme');
+
+  vizCtx.fillStyle = isDark ? '#1a1a1a' : '#f5f5f5';
+  vizCtx.fillRect(0, 0, w, h);
+
+  if (analyserNode && isPlaying) {
+    const bufLen = analyserNode.frequencyBinCount;
+    const data = new Uint8Array(bufLen);
+    analyserNode.getByteTimeDomainData(data);
+
+    vizCtx.lineWidth = 1.5;
+    vizCtx.strokeStyle = isDark ? 'rgba(220,218,214,0.5)' : 'rgba(75,65,55,0.4)';
+    vizCtx.beginPath();
+    const slice = w / bufLen;
+    let x = 0;
+    for (let i = 0; i < bufLen; i++) {
+      const y = (data[i] / 128.0) * h / 2;
+      i === 0 ? vizCtx.moveTo(x, y) : vizCtx.lineTo(x, y);
+      x += slice;
+    }
+    vizCtx.lineTo(w, h / 2);
+    vizCtx.stroke();
+  }
+
+  requestAnimationFrame(drawVisualizer);
+}
+
+// ==========================================================================
+//  UI
+// ==========================================================================
+
+let currentSession = 'focus';
+function currentSessionLabel() {
+  return { focus: 'Focus', break: 'Break' }[currentSession] || 'Focus';
+}
+function updateStatus(state, session) {
+  document.getElementById('statusValue').textContent = state;
+  document.getElementById('statusSession').textContent = session;
+}
+
+const DESCRIPTIONS = {
+  white:    'Equal energy at all frequencies. Bright and airy, like TV static or a fan.',
+  pink:     '1/f spectrum — balanced across octaves. Natural-sounding, like rainfall.',
+  brown:    'Low-frequency rumble. Deepest and most soothing. Like distant thunder or ocean.',
+  campfire: 'Procedural campfire. Three layers: low rumble, mid-freq whoosh, and random crackles/pops.',
+};
+
+const NOISE_BUTTONS = ['btnWhite', 'btnPink', 'btnBrown', 'btnCampfire'];
+
+function setNoiseType(type) {
+  currentNoiseType = type;
+  for (const id of NOISE_BUTTONS) {
+    document.getElementById(id).classList.toggle('active', id === 'btn' + type.charAt(0).toUpperCase() + type.slice(1));
+  }
+  document.getElementById('noiseDescription').textContent = DESCRIPTIONS[type];
+  document.getElementById('campfireControls').classList.toggle('visible', type === 'campfire');
+
+  if (isPlaying) {
+    // Restart with new type (keep volume)
+    disconnectAll();
+    resetNoiseState();
+    if (type === 'campfire') {
+      createCampfireChain();
+    } else {
+      createSimpleNoiseChain();
+    }
+  }
+}
+
+// Volume
+document.getElementById('s_volume').addEventListener('input', (e) => {
+  const vol = e.target.value / 100;
+  document.getElementById('v_volume').textContent = e.target.value + '%';
+  if (masterGain && isPlaying) {
+    masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+    masterGain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  }
+});
+
+// Fade
+document.getElementById('s_fadeIn').addEventListener('input', (e) => {
+  fadeInTime = e.target.value / 10;
+  document.getElementById('v_fadeIn').textContent = fadeInTime.toFixed(1) + 's';
+});
+document.getElementById('s_fadeOut').addEventListener('input', (e) => {
+  fadeOutTime = e.target.value / 10;
+  document.getElementById('v_fadeOut').textContent = fadeOutTime.toFixed(1) + 's';
+});
+
+// EQ
+document.getElementById('s_cutoff').addEventListener('input', (e) => {
+  const freq = parseInt(e.target.value);
+  document.getElementById('v_cutoff').textContent = freq + ' Hz';
+  if (activeNodes._eqFilter && audioCtx) {
+    activeNodes._eqFilter.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  }
+});
+document.getElementById('s_resonance').addEventListener('input', (e) => {
+  const q = parseFloat(e.target.value);
+  document.getElementById('v_resonance').textContent = q.toFixed(1);
+  if (activeNodes._eqFilter && audioCtx) {
+    activeNodes._eqFilter.Q.setValueAtTime(q, audioCtx.currentTime);
+  }
+});
+
+// Campfire layer controls
+document.getElementById('s_cfBase').addEventListener('input', (e) => {
+  cfBaseVol = e.target.value / 100;
+  document.getElementById('v_cfBase').textContent = e.target.value + '%';
+});
+document.getElementById('s_cfMid').addEventListener('input', (e) => {
+  cfMidVol = e.target.value / 100;
+  document.getElementById('v_cfMid').textContent = e.target.value + '%';
+});
+document.getElementById('s_cfCrackle').addEventListener('input', (e) => {
+  cfCrackleVol = e.target.value / 100;
+  document.getElementById('v_cfCrackle').textContent = e.target.value + '%';
+});
+document.getElementById('s_cfRate').addEventListener('input', (e) => {
+  cfCrackleRate = parseInt(e.target.value);
+  document.getElementById('v_cfRate').textContent = cfCrackleRate + '/s';
+});
+document.getElementById('s_cfPopRate').addEventListener('input', (e) => {
+  cfPopRate = parseInt(e.target.value);
+  document.getElementById('v_cfPopRate').textContent = cfPopRate + '/s';
+});
+
+// Noise type buttons
+document.getElementById('btnWhite').addEventListener('click', () => setNoiseType('white'));
+document.getElementById('btnPink').addEventListener('click', () => setNoiseType('pink'));
+document.getElementById('btnBrown').addEventListener('click', () => setNoiseType('brown'));
+document.getElementById('btnCampfire').addEventListener('click', () => setNoiseType('campfire'));
+
+// Timer simulation
+document.getElementById('btnStart').addEventListener('click', () => {
+  currentSession = 'focus';
+  startNoise();
+});
+document.getElementById('btnPause').addEventListener('click', () => { pauseNoise(); });
+document.getElementById('btnBreak').addEventListener('click', () => {
+  currentSession = 'break';
+  stopNoise();
+  updateStatus('Break', 'Break — noise off');
+});
+document.getElementById('btnStop').addEventListener('click', () => { stopNoise(); });
+
+// Theme
+document.getElementById('btnTheme').addEventListener('click', () => {
+  const isDark = document.body.hasAttribute('data-theme');
+  if (isDark) {
+    document.body.removeAttribute('data-theme');
+    document.getElementById('btnTheme').textContent = 'Dark Mode';
+  } else {
+    document.body.setAttribute('data-theme', 'dark');
+    document.getElementById('btnTheme').textContent = 'Light Mode';
+  }
+});
+
+// --- Init ---
+window.addEventListener('resize', setupVizCanvas);
+setupVizCanvas();
+drawVisualizer();
+</script>
+</body>
+</html>

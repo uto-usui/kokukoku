@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kokukoku — Pulse Visual Mockup</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1a1a1a; --fg-secondary: #888; --control-bg: #f5f5f5; --control-border: #ddd; }
+  [data-theme="dark"] { --bg: #0e0e0e; --fg: #e8e8e8; --fg-secondary: #666; --control-bg: #1a1a1a; --control-border: #333; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+    background: var(--bg); color: var(--fg);
+    display: flex; flex-direction: column; align-items: center;
+    min-height: 100vh; padding: 20px;
+    transition: background 0.3s, color 0.3s;
+  }
+  h1 { font-size: 14px; font-weight: 500; color: var(--fg-secondary); letter-spacing: 0.5px; margin-bottom: 6px; }
+  .session-label { font-size: 16px; font-weight: 500; color: var(--fg-secondary); margin-bottom: 10px; }
+  .canvas-container { position: relative; width: min(400px, 80vw); height: min(400px, 80vw); margin-bottom: 8px; }
+  canvas { width: 100%; height: 100%; }
+  .timer-overlay {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-size: 32px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: var(--fg); opacity: 0.45; letter-spacing: 1px;
+  }
+  .controls { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(500px, 92vw); }
+  .section-label {
+    font-size: 11px; font-weight: 600; color: var(--fg-secondary); text-transform: uppercase;
+    letter-spacing: 1px; margin-top: 8px; margin-bottom: 2px; width: 100%; padding-left: 2px;
+  }
+  .slider-row { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .slider-row label { font-size: 12px; font-weight: 500; color: var(--fg-secondary); min-width: 90px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--fg-secondary); }
+  .slider-row .value { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--fg); min-width: 52px; text-align: right; }
+  .button-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+  button {
+    font-family: inherit; font-size: 12px; font-weight: 500;
+    padding: 5px 14px; border-radius: 8px;
+    border: 1px solid var(--control-border);
+    background: var(--control-bg); color: var(--fg);
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.7; }
+  button.active { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+</style>
+</head>
+<body>
+  <h1>KOKUKOKU</h1>
+  <div class="session-label" id="sessionLabel">Focus</div>
+  <div class="canvas-container">
+    <canvas id="canvas"></canvas>
+    <div class="timer-overlay" id="timerOverlay">25:00</div>
+  </div>
+  <div class="controls">
+
+    <div class="section-label">Rhythm</div>
+    <div class="slider-row">
+      <label>BPM</label>
+      <input type="range" id="s_bpm" min="30" max="120" value="60">
+      <span class="value" id="v_bpm">60</span>
+    </div>
+    <div class="slider-row">
+      <label>Sustain</label>
+      <input type="range" id="s_sustain" min="5" max="60" value="25">
+      <span class="value" id="v_sustain">2.5</span>
+    </div>
+    <div class="slider-row">
+      <label>Pulse Scale</label>
+      <input type="range" id="s_pulseScale" min="5" max="40" value="8">
+      <span class="value" id="v_pulseScale">1.8</span>
+    </div>
+    <div class="slider-row">
+      <label>Ripple Width</label>
+      <input type="range" id="s_rippleWidth" min="5" max="40" value="12">
+      <span class="value" id="v_rippleWidth">0.15</span>
+    </div>
+    <div class="slider-row">
+      <label>Ripple Speed</label>
+      <input type="range" id="s_rippleSpeed" min="5" max="30" value="14">
+      <span class="value" id="v_rippleSpeed">1.4</span>
+    </div>
+
+    <div class="section-label">Particles</div>
+    <div class="slider-row">
+      <label>Count</label>
+      <input type="range" id="s_count" min="8" max="150" value="63">
+      <span class="value" id="v_count">50</span>
+    </div>
+    <div class="slider-row">
+      <label>Base Size</label>
+      <input type="range" id="s_baseSize" min="5" max="50" value="10">
+      <span class="value" id="v_baseSize">1.8</span>
+    </div>
+    <div class="slider-row">
+      <label>Size Rand</label>
+      <input type="range" id="s_sizeRand" min="0" max="40" value="18">
+      <span class="value" id="v_sizeRand">1.8</span>
+    </div>
+    <div class="slider-row">
+      <label>Base Alpha</label>
+      <input type="range" id="s_baseAlpha" min="5" max="80" value="25">
+      <span class="value" id="v_baseAlpha">0.25</span>
+    </div>
+    <div class="slider-row">
+      <label>Pulse Alpha</label>
+      <input type="range" id="s_pulseAlpha" min="10" max="100" value="50">
+      <span class="value" id="v_pulseAlpha">0.65</span>
+    </div>
+    <div class="slider-row">
+      <label>Spread</label>
+      <input type="range" id="s_spread" min="30" max="100" value="81">
+      <span class="value" id="v_spread">0.88</span>
+    </div>
+    <div class="slider-row">
+      <label>Drift Speed</label>
+      <input type="range" id="s_drift" min="0" max="50" value="31">
+      <span class="value" id="v_drift">0.15</span>
+    </div>
+    <div class="slider-row">
+      <label>Drift Range</label>
+      <input type="range" id="s_driftRange" min="1" max="20" value="7">
+      <span class="value" id="v_driftRange">0.06</span>
+    </div>
+
+    <div class="section-label">Glow (per-theme)</div>
+    <div class="slider-row">
+      <label>Soft Scale</label>
+      <input type="range" id="s_softScale" min="8" max="25" value="10">
+      <span class="value" id="v_softScale">1.0</span>
+    </div>
+    <div class="slider-row">
+      <label>Alpha Scale</label>
+      <input type="range" id="s_alphaScale" min="20" max="100" value="100">
+      <span class="value" id="v_alphaScale">1.00</span>
+    </div>
+    <div class="slider-row">
+      <label>Inner R</label>
+      <input type="range" id="s_innerR" min="5" max="60" value="25">
+      <span class="value" id="v_innerR">0.25</span>
+    </div>
+    <div class="slider-row">
+      <label>Outer R</label>
+      <input type="range" id="s_outerR" min="10" max="50" value="25">
+      <span class="value" id="v_outerR">2.5</span>
+    </div>
+    <div class="slider-row">
+      <label>Mid Stop</label>
+      <input type="range" id="s_midStop" min="10" max="80" value="40">
+      <span class="value" id="v_midStop">0.40</span>
+    </div>
+    <div class="slider-row">
+      <label>Mid Alpha</label>
+      <input type="range" id="s_midAlpha" min="10" max="80" value="50">
+      <span class="value" id="v_midAlpha">0.50</span>
+    </div>
+    <div class="slider-row">
+      <label>Center Glow</label>
+      <input type="range" id="s_centerGlow" min="0" max="20" value="6">
+      <span class="value" id="v_centerGlow">0.06</span>
+    </div>
+
+    <div class="section-label">Timer</div>
+    <div class="slider-row">
+      <label>Progress</label>
+      <input type="range" id="s_progress" min="0" max="10000" value="0">
+      <span class="value" id="v_progress">0.0%</span>
+    </div>
+
+    <div class="button-row">
+      <button id="btnFocus" class="active">Focus</button>
+      <button id="btnShortBreak">Short Break</button>
+      <button id="btnLongBreak">Long Break</button>
+    </div>
+    <div class="button-row">
+      <button id="btnTheme">Dark Mode</button>
+      <button id="btnReset">Reset Defaults</button>
+    </div>
+  </div>
+
+<script>
+const TWO_PI = Math.PI * 2;
+
+// ==========================================================================
+//  All tunable parameters with defaults per theme
+// ==========================================================================
+
+const DEFAULTS = {
+  // Rhythm
+  bpm: 60,
+  sustain: 2.5,
+  pulseScale: 0.8,
+  rippleWidth: 0.12,
+  rippleSpeed: 1.4,
+  // Particles
+  count: 63,
+  baseSize: 1.0,
+  sizeRand: 1.8,
+  baseAlpha: 0.25,
+  pulseAlpha: 0.50,
+  spread: 0.81,
+  drift: 0.31,
+  driftRange: 0.07,
+  // Glow — theme-dependent defaults
+  light: { softScale: 1.12, alphaScale: 0.70, innerR: 0.35, outerR: 1.7, midStop: 0.50, midAlpha: 0.30, centerGlow: 0.03 },
+  dark:  { softScale: 1.00, alphaScale: 1.00, innerR: 0.25, outerR: 2.5, midStop: 0.40, midAlpha: 0.50, centerGlow: 0.06 },
+};
+
+let P = {}; // active params
+let isDark = false;
+let timerProgress = 0;
+let currentSession = 'focus';
+let particles = [];
+
+function loadDefaults() {
+  const g = isDark ? DEFAULTS.dark : DEFAULTS.light;
+  P = {
+    bpm: DEFAULTS.bpm, sustain: DEFAULTS.sustain, pulseScale: DEFAULTS.pulseScale,
+    rippleWidth: DEFAULTS.rippleWidth, rippleSpeed: DEFAULTS.rippleSpeed,
+    count: DEFAULTS.count, baseSize: DEFAULTS.baseSize, sizeRand: DEFAULTS.sizeRand,
+    baseAlpha: DEFAULTS.baseAlpha, pulseAlpha: DEFAULTS.pulseAlpha,
+    spread: DEFAULTS.spread, drift: DEFAULTS.drift, driftRange: DEFAULTS.driftRange,
+    softScale: g.softScale, alphaScale: g.alphaScale, innerR: g.innerR,
+    outerR: g.outerR, midStop: g.midStop, midAlpha: g.midAlpha, centerGlow: g.centerGlow,
+  };
+}
+
+// ==========================================================================
+//  Slider ↔ Param binding
+// ==========================================================================
+
+const SLIDER_MAP = [
+  // [sliderId, paramKey, toValue, toSlider, formatDisplay]
+  ['s_bpm',        'bpm',        v => +v,             v => v,                v => v],
+  ['s_sustain',    'sustain',    v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_pulseScale', 'pulseScale', v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_rippleWidth','rippleWidth',v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_rippleSpeed','rippleSpeed',v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_count',      'count',      v => +v,             v => v,                v => v],
+  ['s_baseSize',   'baseSize',   v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_sizeRand',   'sizeRand',   v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_baseAlpha',  'baseAlpha',  v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_pulseAlpha', 'pulseAlpha', v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_spread',     'spread',     v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_drift',      'drift',      v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_driftRange', 'driftRange', v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_softScale',  'softScale',  v => v / 10,         v => v * 10,           v => v.toFixed(2)],
+  ['s_alphaScale', 'alphaScale', v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_innerR',     'innerR',     v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_outerR',     'outerR',     v => v / 10,         v => v * 10,           v => v.toFixed(1)],
+  ['s_midStop',    'midStop',    v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_midAlpha',   'midAlpha',   v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+  ['s_centerGlow', 'centerGlow', v => v / 100,        v => v * 100,          v => v.toFixed(2)],
+];
+
+function syncSlidersFromParams() {
+  for (const [sid, key, , toSlider, fmt] of SLIDER_MAP) {
+    const el = document.getElementById(sid);
+    const vEl = document.getElementById('v' + sid.slice(1));
+    el.value = toSlider(P[key]);
+    vEl.textContent = fmt(P[key]);
+  }
+  // Progress slider
+  document.getElementById('s_progress').value = timerProgress * 10000;
+  document.getElementById('v_progress').textContent = (timerProgress * 100).toFixed(1) + '%';
+}
+
+function bindSliders() {
+  for (const [sid, key, toValue, , fmt] of SLIDER_MAP) {
+    const el = document.getElementById(sid);
+    const vEl = document.getElementById('v' + sid.slice(1));
+    el.addEventListener('input', () => {
+      P[key] = toValue(+el.value);
+      vEl.textContent = fmt(P[key]);
+      if (key === 'count') { resetParticles(); }
+    });
+  }
+  const progEl = document.getElementById('s_progress');
+  progEl.addEventListener('input', () => {
+    timerProgress = progEl.value / 10000;
+    document.getElementById('v_progress').textContent = (timerProgress * 100).toFixed(1) + '%';
+  });
+}
+
+// ==========================================================================
+//  Particles
+// ==========================================================================
+
+let canvasSize = 0, maxRadius = 0;
+
+function createParticles(count, maxR) {
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    const r = Math.sqrt(Math.random()) * maxR * P.spread;
+    const angle = Math.random() * TWO_PI;
+    out.push({
+      baseX: Math.cos(angle) * r,
+      baseY: Math.sin(angle) * r,
+      distFromCenter: r,
+      driftX: 0, driftY: 0,
+      driftVx: (Math.random() - 0.5) * P.drift,
+      driftVy: (Math.random() - 0.5) * P.drift,
+      baseRadius: P.baseSize + Math.random() * P.sizeRand,
+      phase: Math.random() * TWO_PI,
+    });
+  }
+  return out;
+}
+
+function resetParticles() {
+  particles = createParticles(P.count, maxRadius);
+}
+
+// ==========================================================================
+//  Heartbeat + Ripple
+// ==========================================================================
+
+function heartbeatEnvelope(phase) {
+  const attackWidth = 0.035;
+  const decayWidth = 0.055 * P.sustain;
+  const secondPeakPos = 0.10 + 0.10 * Math.min(P.sustain, 3) / 3;
+  const secondDecayWidth = 0.07 * P.sustain;
+
+  const dist1 = phase - 0.08;
+  const p1 = dist1 < 0
+    ? Math.exp(-Math.pow(dist1 / attackWidth, 2))
+    : Math.exp(-Math.pow(dist1 / decayWidth, 2));
+
+  const dist2 = phase - secondPeakPos;
+  const p2 = dist2 < 0
+    ? Math.exp(-Math.pow(dist2 / (attackWidth * 1.2), 2))
+    : Math.exp(-Math.pow(dist2 / secondDecayWidth, 2)) * 0.45;
+
+  return p1 + p2;
+}
+
+function rippleIntensity(distFromCenter, maxR, beatPhase) {
+  const speed = P.rippleSpeed / Math.max(1, P.sustain * 0.6);
+  const ripplePos = beatPhase * maxR * speed;
+  const delta = distFromCenter - ripplePos;
+  const width = maxR * (P.rippleWidth + P.sustain * 0.04);
+  return Math.exp(-(delta * delta) / (2 * width * width));
+}
+
+// ==========================================================================
+//  Render
+// ==========================================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let startTime = performance.now();
+
+function setupCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvasSize = rect.width;
+  maxRadius = canvasSize * 0.44;
+}
+
+function updateDrift(dt) {
+  const maxDrift = maxRadius * P.driftRange;
+  for (const p of particles) {
+    p.driftVx += (Math.random() - 0.5) * P.drift * dt;
+    p.driftVy += (Math.random() - 0.5) * P.drift * dt;
+    p.driftVx -= p.driftX * 0.002;
+    p.driftVy -= p.driftY * 0.002;
+    p.driftVx *= 0.98;
+    p.driftVy *= 0.98;
+    p.driftX += p.driftVx * dt;
+    p.driftY += p.driftVy * dt;
+    const dist = Math.sqrt(p.driftX * p.driftX + p.driftY * p.driftY);
+    if (dist > maxDrift) { p.driftX *= maxDrift / dist; p.driftY *= maxDrift / dist; }
+  }
+}
+
+function render(timestamp) {
+  const elapsed = timestamp - startTime;
+  const cx = canvasSize / 2;
+  const cy = canvasSize / 2;
+
+  const beatPeriod = 60000 / P.bpm;
+  const beatPhase = (elapsed % beatPeriod) / beatPeriod;
+  const beatIntensity = heartbeatEnvelope(beatPhase);
+
+  updateDrift(1 / 60);
+  ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+  const fgRGB = isDark ? '220, 218, 214' : '75, 65, 55';
+  const isBreak = currentSession !== 'focus';
+  const sessionAlpha = isBreak ? Math.max(0.05, 1.0 - timerProgress * 0.8) : 1.0;
+  const progressSpread = 1.0 + timerProgress * 0.08;
+
+  for (const p of particles) {
+    const worldX = cx + (p.baseX + p.driftX) * progressSpread;
+    const worldY = cy + (p.baseY + p.driftY) * progressSpread;
+
+    const ripple = rippleIntensity(p.distFromCenter, maxRadius, beatPhase);
+    const pulseAmount = beatIntensity * ripple;
+
+    const scale = 1.0 + pulseAmount * P.pulseScale;
+    const radius = p.baseRadius * scale * P.softScale;
+    const particleAlpha = Math.min(1, (P.baseAlpha + pulseAmount * P.pulseAlpha) * sessionAlpha * P.alphaScale);
+
+    const individualOsc = Math.sin(elapsed * 0.001 + p.phase) * 0.05;
+    const finalRadius = Math.max(1, radius * (1 + individualOsc));
+
+    const innerR = finalRadius * P.innerR;
+    const outerR = finalRadius * P.outerR;
+    const grad = ctx.createRadialGradient(worldX, worldY, innerR, worldX, worldY, outerR);
+    grad.addColorStop(0, `rgba(${fgRGB}, ${particleAlpha})`);
+    grad.addColorStop(P.midStop, `rgba(${fgRGB}, ${particleAlpha * P.midAlpha})`);
+    grad.addColorStop(1, `rgba(${fgRGB}, 0)`);
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(worldX, worldY, outerR, 0, TWO_PI);
+    ctx.fill();
+  }
+
+  if (beatIntensity > 0.1 && P.centerGlow > 0) {
+    const glowR = maxRadius * 0.18 * beatIntensity;
+    const glowA = beatIntensity * P.centerGlow * sessionAlpha;
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowR);
+    grad.addColorStop(0, `rgba(${fgRGB}, ${glowA})`);
+    grad.addColorStop(1, `rgba(${fgRGB}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, glowR, 0, TWO_PI);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+
+  const duration = { focus: 25*60, shortBreak: 5*60, longBreak: 15*60 }[currentSession];
+  const remaining = Math.round(duration * (1 - timerProgress));
+  document.getElementById('timerOverlay').textContent =
+    String(Math.floor(remaining / 60)).padStart(2, '0') + ':' + String(remaining % 60).padStart(2, '0');
+
+  requestAnimationFrame(render);
+}
+
+// ==========================================================================
+//  Controls
+// ==========================================================================
+
+function setSession(s) {
+  currentSession = s;
+  document.getElementById('btnFocus').classList.toggle('active', s === 'focus');
+  document.getElementById('btnShortBreak').classList.toggle('active', s === 'shortBreak');
+  document.getElementById('btnLongBreak').classList.toggle('active', s === 'longBreak');
+  document.getElementById('sessionLabel').textContent =
+    { focus: 'Focus', shortBreak: 'Short Break', longBreak: 'Long Break' }[s];
+}
+
+document.getElementById('btnFocus').addEventListener('click', () => setSession('focus'));
+document.getElementById('btnShortBreak').addEventListener('click', () => setSession('shortBreak'));
+document.getElementById('btnLongBreak').addEventListener('click', () => setSession('longBreak'));
+
+document.getElementById('btnTheme').addEventListener('click', () => {
+  isDark = !isDark;
+  document.body.setAttribute('data-theme', isDark ? 'dark' : '');
+  document.getElementById('btnTheme').textContent = isDark ? 'Light Mode' : 'Dark Mode';
+  // Swap glow defaults per theme
+  const g = isDark ? DEFAULTS.dark : DEFAULTS.light;
+  P.softScale = g.softScale; P.alphaScale = g.alphaScale;
+  P.innerR = g.innerR; P.outerR = g.outerR;
+  P.midStop = g.midStop; P.midAlpha = g.midAlpha; P.centerGlow = g.centerGlow;
+  syncSlidersFromParams();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  loadDefaults();
+  timerProgress = 0;
+  syncSlidersFromParams();
+  resetParticles();
+});
+
+// --- Init ---
+window.addEventListener('resize', () => { setupCanvas(); resetParticles(); });
+
+loadDefaults();
+setupCanvas();
+bindSliders();
+syncSlidersFromParams();
+resetParticles();
+requestAnimationFrame(render);
+</script>
+</body>
+</html>

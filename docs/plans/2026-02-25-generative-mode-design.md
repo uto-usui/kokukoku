@@ -1,18 +1,23 @@
-# Generative Mode Phase 1 Design
+# Generative Mode Design
 
 ## Goal
 
-タイマー画面にジェネラティブアート表示を追加する。Phase 1 では Session 1「円の分割 (Subdivision)」のみ実装し、Break 中の Decay 表現を含める。アーキテクチャを確立し、後続の 3 ビジュアル追加を容易にする。
+タイマー画面にリズムアニメーション表示を追加する。BPM 駆動の Pulse ビジュアルを実装し、Break 中の Decay 表現を含める。
 
 ## Background
 
 STRATEGY.md Phase 2 に定義されたジェネラティブモード:
 - タイマー画面をジェネラティブアートに切り替えるオプション（設定で ON/OFF）
 - 残り時間は小さく数字で常時表示。図形は時間を「感じる」ための表現
-- 入力パラメータは「残り時間」「セッション種別」「セッション番号」のみ。決定論的
 - 技術: SwiftUI Canvas + TimelineView。Metal 不要の軽量実装
 
-Phase 1 スコープ: Subdivision ビジュアル 1 種 + Decay + Settings toggle + アーキテクチャ基盤
+### Direction Change
+
+当初は 4 種のジェネラティブアート（Subdivision / Lissajous / Grid Morphing / Breathing Rings）を段階実装する計画だったが、HTML モックアップでの検証を経て方針転換:
+
+- Subdivision（曼荼羅）: 進行度に応じた図形の成長は「だんだん細かくなる」印象が主で、ジェネラティブアートとしての美しさに達しなかった
+- **Pulse（心拍リズム）を採用**: 25 分間一貫して鼓動を感じる体験。集中状態の可視化として最も自然
+- 4 種のビジュアル切り替えはペンディング。将来的に Protocol ベースで追加可能な設計は維持する
 
 ## Architecture
 
@@ -21,8 +26,7 @@ Phase 1 スコープ: Subdivision ビジュアル 1 種 + Decay + Settings toggl
 ```
 Features/Timer/Generative/
 ├── GenerativeVisual.swift       # Protocol + Factory + shared input type
-├── SubdivisionVisual.swift      # Session 1: 円の分割
-├── DecayModifier.swift          # Break中のフェードアウト計算
+├── PulseVisual.swift            # BPM駆動パーティクルフィールド
 └── GenerativeTimerView.swift    # SwiftUI Canvas + TimelineView wrapper
 ```
 
@@ -30,9 +34,9 @@ Features/Timer/Generative/
 
 ```swift
 struct GenerativeInput {
-    let progress: Double        // 0.0 (start) → 1.0 (complete)
+    let elapsed: TimeInterval       // session elapsed time in seconds
+    let progress: Double            // 0.0 (start) → 1.0 (complete)
     let sessionType: SessionType
-    let sessionIndex: Int       // completedFocusCount % longBreakFrequency
     let canvasSize: CGSize
 }
 
@@ -41,64 +45,94 @@ protocol GenerativeVisual {
 }
 ```
 
-`draw` は純粋関数。同じ input に対して同じ描画を返す（決定論的）。
+`draw` はフレームごとに呼ばれる。`elapsed` でリズム位相を計算し、`progress` / `sessionType` でセッション表現を変える。
 
 ### Factory
 
 ```swift
 enum GenerativeVisualFactory {
-    static func visual(for sessionIndex: Int) -> GenerativeVisual {
-        // Phase 1: always returns Subdivision
-        SubdivisionVisual()
+    static func visual() -> GenerativeVisual {
+        PulseVisual()
     }
 }
 ```
 
-Phase 2 で sessionIndex に基づくビジュアル切り替えをここに追加。
+将来ビジュアル種を追加する場合、ここの switch を拡張する。
 
-## Subdivision Visual
+## Pulse Visual
 
-25 分間で 1 つの円が幾何学的な曼荼羅に成長する。
+BPM 60 の心拍リズムで粒子が明滅するパーティクルフィールド。
 
-### Parameter Mapping (progress → drawing)
+### Core Concept
 
-| progress | concentricRings | radialDivisions | arcDetail | strokeOpacity |
-|----------|----------------|-----------------|-----------|---------------|
-| 0.0      | 1              | 0               | 0.0       | 0.3           |
-| 0.25     | 2              | 3               | 0.0       | 0.45          |
-| 0.50     | 4              | 6               | 0.0       | 0.6           |
-| 0.75     | 6              | 12              | 0.5       | 0.8           |
-| 1.0      | 8              | 24              | 1.0       | 1.0           |
+- 心臓の鼓動（lub-dub）をダブルピークの Gaussian エンベロープで表現
+- 中心から放射状にリップルが伝播し、通過した粒子が明滅する
+- 粒子はブラウン運動でゆっくり漂う
+- ダーク: 星空のような光点。ライト: 温かみのあるソフトな粒
 
-### Drawing Steps
+### Confirmed Parameters (from mockup)
 
-1. 外周円を描画
-2. progress に応じて同心円を内側に追加（等間隔）
-3. progress に応じて中心から放射状の線を追加
-4. progress 0.5 以降: 同心円と放射線の交点間をアーク（円弧）で接続 → 曼荼羅パターン出現
-5. progress 1.0 で結晶的な完成形
-
-### Style
-
-- `.primary` モノクロ（ライト/ダークモード両対応）
-- 線幅: Canvas サイズ相対（`size.width * 0.003` 程度）
-- Fill なし、stroke のみ
-
-## Decay (Break Expression)
-
-Break セッション中は完成した図形がフェードアウトする:
-
-- Break progress 0.0 (直後): 完成形を opacity 1.0 で表示
-- Break progress 1.0 (終了): opacity 0.0 で消滅
-- 実装: Subdivision を progress=1.0 で描画 + `opacity(1.0 - breakProgress)` 適用
-
-```swift
-struct DecayModifier {
-    static func opacity(breakProgress: Double) -> Double {
-        max(0, 1.0 - breakProgress)
-    }
-}
 ```
+Rhythm:
+  bpm           = 60
+  sustain       = 2.5
+  pulseScale    = 0.8
+  rippleWidth   = 0.12
+  rippleSpeed   = 1.4
+
+Particles:
+  count         = 63
+  baseSize      = 1.0
+  sizeRand      = 1.8
+  baseAlpha     = 0.25
+  pulseAlpha    = 0.50
+  spread        = 0.81
+  driftSpeed    = 0.31
+  driftRange    = 0.07
+
+Glow (Dark):
+  softScale     = 1.00
+  alphaScale    = 1.00
+  innerR        = 0.25
+  outerR        = 2.5
+  midStop       = 0.40
+  midAlpha      = 0.50
+  centerGlow    = 0.06
+
+Glow (Light):
+  softScale     = 1.12
+  alphaScale    = 0.70
+  innerR        = 0.35
+  outerR        = 1.7
+  midStop       = 0.50
+  midAlpha      = 0.30
+  centerGlow    = 0.03
+```
+
+### Heartbeat Envelope
+
+ダブルピーク Gaussian（lub-dub パターン）:
+- 1st peak: position 0.08, sharp attack (width 0.035), sustain-scaled decay
+- 2nd peak: position ~0.10–0.20, slightly wider attack, 0.45x amplitude
+- Sustain パラメータで decay 幅を制御（光→暗の遷移速度）
+
+### Ripple Propagation
+
+- 心拍ごとに中心から円形の波が外側に伝播
+- 各粒子は波が通過した瞬間に明滅（距離ベースの Gaussian 減衰）
+- `rippleSpeed` / `rippleWidth` で伝播速度と波の幅を制御
+
+### Particle Rendering
+
+- 各粒子は `createRadialGradient` でソフトな円を描画
+- テーマに応じて色・グロー・透明度が切り替わる
+- ブラウン運動: ランダム加速 + 原点復帰力 + 速度減衰
+
+### Break Expression (Decay)
+
+Break セッション中は粒子の opacity を時間経過で下げる:
+- `sessionAlpha = max(0.05, 1.0 - breakProgress * 0.8)`
+- 完全には消えず、微かな存在感を残して Break 終了
 
 ## TimerScreen Integration
 
@@ -109,7 +143,7 @@ struct DecayModifier {
 ┌─────────────────┐
 │                  │
 │   Canvas         │      ← replaces ProgressView
-│   (generative)   │
+│   (pulse)        │
 │                  │
 │     12:34        │      ← timer digits smaller, overlaid on canvas
 └─────────────────┘
@@ -124,9 +158,10 @@ struct DecayModifier {
 
 ### GenerativeTimerView
 
-- `TimelineView(.periodic(every: 0.1))` で 10fps 更新
-- `accessibilityReduceMotion` ON → `TimelineView(.everyMinute)` にフォールバック
+- `TimelineView(.animation)` でフレームレート更新
+- `accessibilityReduceMotion` ON → Generative Mode 自動無効化、標準プログレスバーにフォールバック
 - `aspectRatio(1, contentMode: .fit)` で正方形キャンバス
+- `@Environment(\.colorScheme)` でテーマ検出、パラメータ切り替え
 
 ## Settings Integration
 
@@ -142,13 +177,14 @@ struct DecayModifier {
 
 | Target | Test Content | Method |
 |--------|-------------|--------|
-| Subdivision parameter calc | progress 0/0.25/0.5/0.75/1.0 → correct rings/divisions/opacity | Unit test (pure function) |
-| DecayModifier.opacity | breakProgress → opacity conversion | Unit test |
-| GenerativeVisualFactory | sessionIndex → correct visual type | Unit test |
+| Heartbeat envelope | beatPhase → intensity, peak positions, sustain effect | Unit test (pure function) |
+| Ripple intensity | distance + beatPhase → intensity | Unit test (pure function) |
+| Decay opacity | breakProgress → sessionAlpha | Unit test |
+| Particle init | count, spread → valid positions | Unit test |
 | Settings persistence | generativeModeEnabled persists and applies | Unit test (existing pattern) |
 | Visual rendering | Canvas renders without crash | Preview + manual |
 
-Canvas 描画結果の自動テストは行わない（コスト対効果が低い）。パラメータ計算の純粋関数テストで描画ロジックの正しさを間接保証。
+Canvas 描画結果の自動テストは行わない。パラメータ計算の純粋関数テストで描画ロジックの正しさを間接保証。
 
 ## Accessibility
 
@@ -156,24 +192,15 @@ Canvas 描画結果の自動テストは行わない（コスト対効果が低�
 - Canvas に `accessibilityLabel("Timer progress N%")` 付与
 - VoiceOver: 既存テキスト表示が引き続き機能
 
-## Mockup Strategy
+## Mockup
 
-Swift 実装前に HTML Canvas でモックアップを作成し、ビジュアルの方向性を検証する:
+`mockups/pulse.html` にパラメータ確定済みの HTML Canvas モックアップが存在する。全パラメータをスライダーで調整可能。Swift 実装時のリファレンスとして使用する。
 
-- HTML Canvas と SwiftUI Canvas は描画プリミティブ（arc, line, path, stroke）が類似
-- progress スライダーで 0→1 の進行を操作して確認
-- Decay のフェードアウト確認
-- ライト/ダークモード切り替え
-- パラメータ確定後、数学ロジックをそのまま Swift に移植
+## Future Extension (Pending)
 
-## Phase 2 Extension Path
-
-1. `LissajousVisual`, `GridMorphingVisual`, `BreathingRingsVisual` を protocol 準拠で追加
-2. `GenerativeVisualFactory.visual(for:)` の switch を拡張
-3. 他のコード変更不要
-
-## Out of Scope (Phase 1)
-
-- Watch / Widget / MenuBar / Live Activity へのジェネラティブ表示
-- ビジュアルの種類選択 UI（Phase 1 は Subdivision 固定）
+以下は将来的な拡張として保留:
+- Subdivision / Lissajous / Grid Morphing / Breathing Rings の追加
+- ビジュアル種の選択 UI
+- `GenerativeVisualFactory` の switch 拡張による切り替え
+- Watch / Widget / MenuBar / Live Activity へのビジュアル表示
 - Metal ハードウェアアクセラレーション
