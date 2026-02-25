@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct TimerScreen: View {
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+
     @Bindable var store: TimerStore
 
     var body: some View {
@@ -15,22 +17,32 @@ struct TimerScreen: View {
             }
             .padding(24)
             .frame(maxWidth: 680)
+            .transaction { transaction in
+                if self.accessibilityReduceMotion {
+                    transaction.animation = nil
+                }
+            }
         }
         .navigationTitle("Kokukoku")
     }
 
     private var sessionHeader: some View {
-        Label(self.store.sessionType.title, systemImage: self.store.sessionType.symbolName)
-            .font(.title3.weight(.medium))
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .background(.thinMaterial, in: Capsule())
+        HStack(spacing: 6) {
+            Image(systemName: self.store.sessionType.symbolName)
+                .accessibilityHidden(true)
+            Text(self.store.sessionType.title)
+        }
+        .font(.title3.weight(.medium))
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
     }
 
     private var timerDisplay: some View {
         Text(self.store.formattedRemainingTime)
             .font(.system(size: 74, weight: .bold, design: .rounded))
             .monospacedDigit()
+            .contentTransition(self.accessibilityReduceMotion ? .identity : .numericText())
+            .foregroundStyle(.primary)
             .accessibilityLabel("Remaining time \(self.store.formattedRemainingTime)")
             .accessibilityIdentifier("timer.remaining")
     }
@@ -39,6 +51,12 @@ struct TimerScreen: View {
         VStack(spacing: 8) {
             ProgressView(value: self.store.progress)
                 .progressViewStyle(.linear)
+                .tint(.secondary)
+                .animation(
+                    self.accessibilityReduceMotion ? nil : .easeOut(duration: 0.25),
+                    value: self.store.progress
+                )
+                .accessibilityLabel("Timer progress")
             Text(self.store.focusCycleStatusText)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -47,17 +65,28 @@ struct TimerScreen: View {
 
     private var controlButtons: some View {
         VStack(spacing: 12) {
-            Button(self.store.primaryActionTitle) {
-                self.store.performPrimaryAction()
+            if self.shouldUseColoredPrimaryAction {
+                Button(self.store.primaryActionTitle) {
+                    self.store.performPrimaryAction()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(self.primaryActionTintColor)
+                .accessibilityIdentifier("timer.primaryAction")
+            } else {
+                Button(self.store.primaryActionTitle) {
+                    self.store.performPrimaryAction()
+                }
+                .buttonStyle(.bordered)
+                .tint(.primary)
+                .accessibilityIdentifier("timer.primaryAction")
             }
-            .buttonStyle(.borderedProminent)
-            .accessibilityIdentifier("timer.primaryAction")
 
             HStack(spacing: 10) {
                 Button("Reset") {
                     self.store.reset()
                 }
                 .buttonStyle(.bordered)
+                .tint(.primary)
                 .disabled(!self.store.canReset)
                 .accessibilityIdentifier("timer.reset")
 
@@ -65,6 +94,7 @@ struct TimerScreen: View {
                     self.store.skip()
                 }
                 .buttonStyle(.bordered)
+                .tint(.primary)
                 .accessibilityIdentifier("timer.skip")
             }
         }
@@ -93,15 +123,29 @@ struct TimerScreen: View {
             )
         }
         .toggleStyle(.switch)
+        .tint(.secondary)
     }
 
     private var statusFooter: some View {
         VStack(spacing: 4) {
             Text("Auto-start: \(self.store.config.autoStart ? "On" : "Off")")
-            Text("Notifications: \(self.store.config.notificationSoundEnabled ? "Sound" : "Silent")")
+            Text("Notifications: \(self.store.effectiveNotificationSoundEnabled ? "Sound" : "Silent")")
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
+    }
+
+    private var shouldUseColoredPrimaryAction: Bool {
+        true
+    }
+
+    private var primaryActionTintColor: Color {
+        switch self.store.timerState {
+        case .running:
+            .orange
+        case .paused, .idle:
+            .blue
+        }
     }
 }
 

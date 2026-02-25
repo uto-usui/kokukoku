@@ -1,7 +1,68 @@
 import Foundation
 @testable import Kokukoku
+import SwiftData
 import SwiftUI
 import Testing
+
+@MainActor
+private final class NotificationServiceSpy: NotificationServicing {
+    var requestedAuthorizationState: NotificationAuthorizationState
+    var refreshedAuthorizationState: NotificationAuthorizationState
+    var requestAuthorizationCallCount = 0
+    var refreshAuthorizationCallCount = 0
+    var scheduleCallCount = 0
+    var cancelCallCount = 0
+    var lastScheduledSessionType: SessionType?
+    var lastScheduledFireDate: Date?
+    var lastScheduledSoundEnabled: Bool?
+
+    init(
+        requestedAuthorizationState: NotificationAuthorizationState = .authorized,
+        refreshedAuthorizationState: NotificationAuthorizationState = .authorized
+    ) {
+        self.requestedAuthorizationState = requestedAuthorizationState
+        self.refreshedAuthorizationState = refreshedAuthorizationState
+    }
+
+    func refreshAuthorizationState(completion: @escaping (NotificationAuthorizationState) -> Void) {
+        self.refreshAuthorizationCallCount += 1
+        completion(self.refreshedAuthorizationState)
+    }
+
+    func requestAuthorizationIfNeeded(completion: @escaping (NotificationAuthorizationState) -> Void) {
+        self.requestAuthorizationCallCount += 1
+        completion(self.requestedAuthorizationState)
+    }
+
+    func scheduleSessionEndNotification(sessionType: SessionType, fireDate: Date, soundEnabled: Bool) {
+        self.scheduleCallCount += 1
+        self.lastScheduledSessionType = sessionType
+        self.lastScheduledFireDate = fireDate
+        self.lastScheduledSoundEnabled = soundEnabled
+    }
+
+    func cancelSessionEndNotification() {
+        self.cancelCallCount += 1
+    }
+}
+
+@MainActor
+private final class FocusModeServiceSpy: FocusModeServicing {
+    var refreshedStatus = FocusModeStatus(authorizationState: .unknown, isFocused: false)
+    var requestedStatus = FocusModeStatus(authorizationState: .unknown, isFocused: false)
+    var refreshStatusCallCount = 0
+    var requestAuthorizationCallCount = 0
+
+    func refreshStatus(completion: @escaping (FocusModeStatus) -> Void) {
+        self.refreshStatusCallCount += 1
+        completion(self.refreshedStatus)
+    }
+
+    func requestAuthorizationIfNeeded(completion: @escaping (FocusModeStatus) -> Void) {
+        self.requestAuthorizationCallCount += 1
+        completion(self.requestedStatus)
+    }
+}
 
 struct TimerEngineTests {
     private let config = TimerConfig.default
@@ -90,6 +151,48 @@ struct TimerEngineTests {
 
 @MainActor
 struct TimerStoreTests {
+    @Test func startPauseResumeReset_primaryActionsTransitionCorrectly() async {
+        let notificationSpy = NotificationServiceSpy()
+        let store = TimerStore(notificationService: notificationSpy)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+        #expect(store.timerState == .running)
+
+        store.pause()
+        #expect(store.timerState == .paused)
+
+        store.resume()
+        await self.drainMainActorTaskQueue()
+        #expect(store.timerState == .running)
+
+        store.reset()
+        #expect(store.timerState == .idle)
+        #expect(store.sessionType == .focus)
+    }
+
+    @Test func stopAtNextBoundary_policyStopsAndConsumesPolicy() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-1500),
+            endDate: now.addingTimeInterval(-1),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .stopAtNextBoundary
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        #expect(store.sessionType == .shortBreak)
+        #expect(store.timerState == .idle)
+        #expect(store.boundaryStopPolicy == .none)
+    }
+
     @Test func restoreFromElapsedRunningSession_transitionsToNextSession() {
         let store = TimerStore()
         let now = Date()
@@ -244,5 +347,137 @@ struct TimerStoreTests {
         #expect(store.sessionType == .shortBreak)
         #expect(store.timerState == .paused)
         #expect(store.remainingSeconds == TimerConfig.default.shortBreakDurationSec)
+    }
+
+    @Test func startWithDeniedNotificationPermission_doesNotScheduleNotification() async {
+        let notificationSpy = NotificationServiceSpy(requestedAuthorizationState: .denied)
+        let store = TimerStore(notificationService: notificationSpy)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+
+        #expect(store.notificationAuthorizationState == .denied)
+        #expect(notificationSpy.scheduleCallCount == 0)
+    }
+
+    @Test func pauseResetSkip_cancelPendingNotifications() async {
+        let notificationSpy = NotificationServiceSpy()
+        let store = TimerStore(notificationService: notificationSpy)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.scheduleCallCount == 1)
+
+        store.pause()
+        let cancelAfterPause = notificationSpy.cancelCallCount
+        #expect(cancelAfterPause > 0)
+
+        store.resume()
+        await self.drainMainActorTaskQueue()
+        store.reset()
+        let cancelAfterReset = notificationSpy.cancelCallCount
+        #expect(cancelAfterReset > cancelAfterPause)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+        store.skip()
+        let cancelAfterSkip = notificationSpy.cancelCallCount
+        #expect(cancelAfterSkip > cancelAfterReset)
+    }
+
+    @Test func updateNotificationSoundEnabled_reschedulesWithNewSetting() async {
+        let notificationSpy = NotificationServiceSpy()
+        let store = TimerStore(notificationService: notificationSpy)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.lastScheduledSoundEnabled == true)
+
+        store.updateNotificationSoundEnabled(false)
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.lastScheduledSoundEnabled == false)
+        #expect(notificationSpy.scheduleCallCount == 2)
+    }
+
+    @Test func focusModeActive_mutesScheduledNotificationSound() async {
+        let notificationSpy = NotificationServiceSpy()
+        let focusSpy = FocusModeServiceSpy()
+        focusSpy.refreshedStatus = FocusModeStatus(authorizationState: .authorized, isFocused: true)
+        let store = TimerStore(notificationService: notificationSpy, focusModeService: focusSpy)
+
+        store.handleScenePhaseChange(.active)
+        await self.drainMainActorTaskQueue()
+        store.start()
+        await self.drainMainActorTaskQueue()
+
+        #expect(store.focusModeStatus.isFocused)
+        #expect(notificationSpy.lastScheduledSoundEnabled == false)
+    }
+
+    @Test func completedSession_persistsSessionRecord() throws {
+        let notificationSpy = NotificationServiceSpy(requestedAuthorizationState: .denied)
+        let store = TimerStore(notificationService: notificationSpy)
+        let modelContext = try Self.makeInMemoryModelContext()
+        store.bind(modelContext: modelContext)
+
+        let now = Date()
+        store.now = now
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-1500),
+            endDate: now.addingTimeInterval(-1),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        let records = try modelContext.fetch(FetchDescriptor<SessionRecord>())
+        #expect(records.count == 1)
+        #expect(records.first?.completed == true)
+        #expect(records.first?.skipped == false)
+    }
+
+    @Test func skipSession_persistsSkippedRecord() throws {
+        let notificationSpy = NotificationServiceSpy(requestedAuthorizationState: .denied)
+        let store = TimerStore(notificationService: notificationSpy)
+        let modelContext = try Self.makeInMemoryModelContext()
+        store.bind(modelContext: modelContext)
+
+        let now = Date()
+        store.now = now
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-400),
+            endDate: now.addingTimeInterval(600),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.skip()
+
+        let records = try modelContext.fetch(FetchDescriptor<SessionRecord>())
+        #expect(records.count == 1)
+        #expect(records.first?.completed == false)
+        #expect(records.first?.skipped == true)
+    }
+
+    private static func makeInMemoryModelContext() throws -> ModelContext {
+        let schema = Schema([
+            SessionRecord.self,
+            UserTimerPreferences.self
+        ])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        return ModelContext(container)
+    }
+
+    private func drainMainActorTaskQueue() async {
+        await Task.yield()
+        await Task.yield()
     }
 }

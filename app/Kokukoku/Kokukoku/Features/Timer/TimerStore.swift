@@ -2,7 +2,6 @@ import Foundation
 import Observation
 import SwiftData
 import SwiftUI
-
 #if os(iOS)
     import UIKit
 #endif
@@ -13,13 +12,48 @@ final class TimerStore {
     var snapshot: TimerSnapshot = .initial
     var config: TimerConfig = .default
     var notificationAuthorizationState: NotificationAuthorizationState = .unknown
+    var focusModeStatus: FocusModeStatus = .unknown
     var lastErrorMessage: String?
     var now: Date = .init()
 
     @ObservationIgnored var modelContext: ModelContext?
     @ObservationIgnored var preferences: UserTimerPreferences?
-    @ObservationIgnored private let notificationService = NotificationService()
+    @ObservationIgnored private let notificationService: any NotificationServicing
+    @ObservationIgnored private let focusModeService: any FocusModeServicing
+    @ObservationIgnored let watchConnectivityService: any WatchSyncServicing
+    @ObservationIgnored let liveActivityService = LiveActivityService()
     @ObservationIgnored private var ticker: Timer?
+
+    init() {
+        self.notificationService = NotificationService()
+        self.focusModeService = FocusModeService()
+        self.watchConnectivityService = WatchConnectivityService()
+    }
+
+    init(notificationService: any NotificationServicing) {
+        self.notificationService = notificationService
+        self.focusModeService = FocusModeService()
+        self.watchConnectivityService = WatchConnectivityService()
+    }
+
+    init(
+        notificationService: any NotificationServicing,
+        focusModeService: any FocusModeServicing
+    ) {
+        self.notificationService = notificationService
+        self.focusModeService = focusModeService
+        self.watchConnectivityService = WatchConnectivityService()
+    }
+
+    init(
+        notificationService: any NotificationServicing,
+        focusModeService: any FocusModeServicing,
+        watchConnectivityService: any WatchSyncServicing
+    ) {
+        self.notificationService = notificationService
+        self.focusModeService = focusModeService
+        self.watchConnectivityService = watchConnectivityService
+    }
 
     deinit {
         self.ticker?.invalidate()
@@ -81,6 +115,10 @@ final class TimerStore {
     var canReset: Bool {
         self.snapshot.timerState != .idle || self.snapshot.startedAt != nil
     }
+
+    var effectiveNotificationSoundEnabled: Bool {
+        self.config.notificationSoundEnabled && !self.focusModeStatus.isFocused
+    }
 }
 
 extension TimerStore {
@@ -89,8 +127,14 @@ extension TimerStore {
         self.now = Date()
         self.startTickerIfNeeded()
         self.loadPreferencesIfNeeded()
+        self.watchConnectivityService.activate()
+        self.watchConnectivityService.setCommandHandler { [weak self] command in
+            self?.handleWatchCommand(command)
+        }
         self.refreshNotificationAuthorizationState()
+        self.refreshFocusModeStatus()
         self.processElapsedSessionsIfNeeded()
+        self.syncLiveActivity()
     }
 
     func handleScenePhaseChange(_ scenePhase: ScenePhase) {
@@ -100,6 +144,7 @@ extension TimerStore {
 
         self.now = Date()
         self.refreshNotificationAuthorizationState()
+        self.refreshFocusModeStatus()
         self.processElapsedSessionsIfNeeded()
     }
 
@@ -125,6 +170,7 @@ extension TimerStore {
         self.snapshot.timerState = .running
 
         self.requestNotificationPermissionAndScheduleIfNeeded()
+        self.syncLiveActivity()
     }
 
     func pause() {
@@ -137,6 +183,7 @@ extension TimerStore {
         self.snapshot.endDate = nil
         self.snapshot.timerState = .paused
         self.notificationService.cancelSessionEndNotification()
+        self.syncLiveActivity()
     }
 
     func resume() {
@@ -158,6 +205,7 @@ extension TimerStore {
         }
 
         self.requestNotificationPermissionAndScheduleIfNeeded()
+        self.syncLiveActivity()
     }
 
     func reset() {
@@ -169,11 +217,13 @@ extension TimerStore {
         self.snapshot.pausedRemainingSec = nil
         self.snapshot.completedFocusCount = 0
         self.notificationService.cancelSessionEndNotification()
+        self.syncLiveActivity()
     }
 
     func skip() {
         self.now = Date()
         self.completeCurrentSession(at: Date(), dueToSkip: true)
+        self.syncLiveActivity()
     }
 
     func setBoundaryStopPolicy(_ policy: BoundaryStopPolicy) {
@@ -213,6 +263,18 @@ extension TimerStore {
         self.config.notificationSoundEnabled = enabled
         self.persistPreferences()
         self.requestNotificationPermissionAndScheduleIfNeeded()
+    }
+
+    func requestFocusModeAuthorization() {
+        self.focusModeService.requestAuthorizationIfNeeded { [weak self] status in
+            Task { @MainActor in
+                guard let self else {
+                    return
+                }
+                self.focusModeStatus = status
+                self.requestNotificationPermissionAndScheduleIfNeeded()
+            }
+        }
     }
 }
 
@@ -346,6 +408,7 @@ extension TimerStore {
             self.snapshot.startedAt = nil
             self.snapshot.endDate = nil
             self.snapshot.pausedRemainingSec = nextDuration
+            self.syncLiveActivity()
             return
         }
 
@@ -353,6 +416,7 @@ extension TimerStore {
             self.snapshot.timerState = .idle
             self.snapshot.startedAt = nil
             self.snapshot.endDate = nil
+            self.syncLiveActivity()
             return
         }
 
@@ -361,6 +425,7 @@ extension TimerStore {
         self.snapshot.startedAt = context.endedAt
         self.snapshot.endDate = context.endedAt.addingTimeInterval(TimeInterval(nextDuration))
         self.requestNotificationPermissionAndScheduleIfNeeded()
+        self.syncLiveActivity()
     }
 
     private func handleConfigChangeWhileActiveTimer() {
@@ -378,6 +443,8 @@ extension TimerStore {
         case .paused:
             self.snapshot.pausedRemainingSec = max(1, min(self.snapshot.pausedRemainingSec ?? fallback, fallback))
         }
+
+        self.syncLiveActivity()
     }
 }
 
@@ -403,7 +470,7 @@ extension TimerStore {
                 self.notificationService.scheduleSessionEndNotification(
                     sessionType: sessionType,
                     fireDate: endDate,
-                    soundEnabled: self.config.notificationSoundEnabled
+                    soundEnabled: self.effectiveNotificationSoundEnabled
                 )
             }
         }
@@ -416,4 +483,18 @@ extension TimerStore {
             }
         }
     }
+
+    private func refreshFocusModeStatus() {
+        self.focusModeService.refreshStatus { [weak self] status in
+            Task { @MainActor in
+                guard let self else {
+                    return
+                }
+
+                self.focusModeStatus = status
+                self.requestNotificationPermissionAndScheduleIfNeeded()
+            }
+        }
+    }
+
 }

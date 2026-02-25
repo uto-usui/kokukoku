@@ -7,6 +7,7 @@ struct SettingsScreen: View {
         Form {
             self.durationsSection
             self.behaviorSection
+            self.focusModeSection
             self.notificationsSection
 
             if let lastErrorMessage = self.store.lastErrorMessage {
@@ -64,6 +65,27 @@ struct SettingsScreen: View {
         }
     }
 
+    private var focusModeSection: some View {
+        Section("System Focus") {
+            HStack {
+                Text("Status")
+                Spacer()
+                Text(self.focusStatusLabel)
+                    .foregroundStyle(.secondary)
+            }
+
+            if self.store.focusModeStatus.authorizationState == .unknown {
+                Button("Allow Focus Access") {
+                    self.store.requestFocusModeAuthorization()
+                }
+            }
+
+            Text("When Focus is active, notification sound is muted.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var notificationsSection: some View {
         Section("Notifications") {
             Toggle(
@@ -75,6 +97,10 @@ struct SettingsScreen: View {
             )
 
             Text("Permission: \(self.store.notificationAuthorizationState.rawValue)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            Text("Effective sound: \(self.store.effectiveNotificationSoundEnabled ? "On" : "Off")")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -106,5 +132,20 @@ struct SettingsScreen: View {
             get: { self.store.config.longBreakFrequency },
             set: { self.store.updateLongBreakFrequency($0) }
         )
+    }
+
+    private var focusStatusLabel: String {
+        switch self.store.focusModeStatus.authorizationState {
+        case .unavailable:
+            "Unavailable"
+        case .unknown:
+            "Not Granted"
+        case .restricted:
+            "Restricted"
+        case .denied:
+            "Denied"
+        case .authorized:
+            self.store.focusModeStatus.isFocused ? "Active" : "Inactive"
+        }
     }
 }
