@@ -102,6 +102,6 @@
   - [x] `simctl launch` でアプリ起動確認
 
 ## Phase 2 Verification (Manual)
-- [ ] iPhone + Apple Watch のペアシミュレータで `Kokukoku` を起動する
-- [ ] iPhoneでタイマー開始/一時停止/再開したとき、Watchの残り時間と状態が追従する
-- [ ] Watchの `Start/Pause/Reset/Skip` 操作がiPhone側のタイマーに反映される
+- [x] iPhone + Apple Watch のペアシミュレータで `Kokukoku` を起動する
+- [x] iPhoneでタイマー開始/一時停止/再開したとき、Watchの残り時間と状態が追従する
+- [x] Watchの `Start/Pause/Reset/Skip` 操作がiPhone側のタイマーに反映される
