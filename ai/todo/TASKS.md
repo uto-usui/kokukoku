@@ -121,7 +121,7 @@
 
 ### Haptics 拡充
 - [x] Start / Pause / Resume に UIImpactFeedbackGenerator 追加（TimerStore.swift、各1行）
-- [ ] 手動確認（iOS Simulator or 実機）
+- [x] 手動確認（iOS Simulator or 実機）
 
 ### Focus Mode オプトアウト
 - [x] TimerConfig に `respectFocusMode: Bool` 追加（default: true）
@@ -161,3 +161,28 @@
   - [x] Settings toggle (generativeModeEnabled)
   - [x] Unit tests (heartbeat envelope, ripple, decay, settings)
   - [x] Accessibility (reduceMotion fallback, VoiceOver)
+
+## Material Surface & Typography
+
+設計: `docs/plans/2026-02-25-material-surface-typography.md`
+
+- [x] `.ultraThinMaterial` 背景でビブランシー有効化
+- [x] GrainOverlay（128x128 CGImage タイル、opacity 0.04）
+- [x] タイマー数字: 100pt thin weight, `.monospacedDigit()`, `.contentTransition(.numericText)`
+- [x] ラベル: `.subheadline` / `.caption`, `.foregroundStyle(.secondary)`
+- [x] タイトル「Kokukoku」: `.foregroundStyle(.tertiary)`, running 中 opacity 0
+- [x] プライマリボタン: `Capsule().fill(.tertiary)`, `.buttonStyle(.plain)`
+- [x] Accessibility: Increase Contrast でグレイン無効、Reduce Motion でアニメ無効
+
+## Control Hierarchy Redesign
+
+設計: `docs/plans/2026-02-25-control-hierarchy-redesign.md`
+
+- [x] ツールバー統合: 2アイコン（History, Settings）→ 単一 `ellipsis` Menu
+- [x] Menu 項目: Sound トグル → History → Settings...（頻度順）
+- [x] History / Settings: `.sheet()` + `NavigationStack` + × ボタン
+- [x] `matchedTransitionSource` / `.navigationTransition(.zoom)` で zoom 遷移
+- [x] `.toolbarBackgroundVisibility(.hidden)` でナビバーガラス非表示
+- [x] Reset/Skip: paused 時のみインライン表示
+- [x] `...` Menu: 全状態で常時表示（running 中も非表示にしない）
+- [x] macOS ビルド / iOS ビルド検証通過
