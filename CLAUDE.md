@@ -90,6 +90,21 @@ For macOS-only builds/tests, fall back to `make build-macos` / `make test-macos`
 - SwiftLint strict mode: line length warning 140 / error 180, file length warning 500 / error 900
 - Timer digits use `.monospacedDigit()`. Primary action uses `.borderedProminent`, secondary `.bordered`.
 
+## Documentation
+
+**`///` comments — what to document:**
+- Domain layer (types, engine functions): required. These define the core model and must be self-explanatory.
+- Service protocols: required. Document the contract, not the implementation.
+- View layer, private helpers, SwiftData models: not required. Names should be self-explanatory.
+
+**`///` style:** Swift Documentation Markup. Summary line first, then detail only when non-obvious. Use `- Parameter`, `- Returns:` for functions with non-trivial signatures.
+
+**ADRs (`docs/adr/`):** Record design decisions that aren't obvious from reading the code. Lightweight Nygard format (Status, Context, Decision, Consequences). Only create an ADR when the "why" matters — e.g., choosing endDate over elapsed counting, not "we used SwiftUI because it's a SwiftUI app."
+
+**CHANGELOG.md:** [Keep a Changelog](https://keepachangelog.com/) format. Update the `[Unreleased]` section when adding features, fixes, or breaking changes. Cut a version section on release.
+
+**No separate ARCHITECTURE.md** — this file (CLAUDE.md) serves that role.
+
 ## Planning Documents
 
 Detailed specs live in `ai/todo/`:
