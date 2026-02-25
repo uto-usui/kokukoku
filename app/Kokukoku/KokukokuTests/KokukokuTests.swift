@@ -399,6 +399,42 @@ struct TimerStoreTests {
         #expect(notificationSpy.scheduleCallCount == 2)
     }
 
+    @Test func respectFocusModeOn_focusActive_mutesSound() {
+        let store = TimerStore()
+        store.config.notificationSoundEnabled = true
+        store.config.respectFocusMode = true
+        store.focusModeStatus = FocusModeStatus(authorizationState: .authorized, isFocused: true)
+
+        #expect(store.effectiveNotificationSoundEnabled == false)
+    }
+
+    @Test func respectFocusModeOff_focusActive_keepsSound() {
+        let store = TimerStore()
+        store.config.notificationSoundEnabled = true
+        store.config.respectFocusMode = false
+        store.focusModeStatus = FocusModeStatus(authorizationState: .authorized, isFocused: true)
+
+        #expect(store.effectiveNotificationSoundEnabled == true)
+    }
+
+    @Test func respectFocusModeOn_focusInactive_keepsSound() {
+        let store = TimerStore()
+        store.config.notificationSoundEnabled = true
+        store.config.respectFocusMode = true
+        store.focusModeStatus = FocusModeStatus(authorizationState: .authorized, isFocused: false)
+
+        #expect(store.effectiveNotificationSoundEnabled == true)
+    }
+
+    @Test func respectFocusModeOff_soundDisabled_staysMuted() {
+        let store = TimerStore()
+        store.config.notificationSoundEnabled = false
+        store.config.respectFocusMode = false
+        store.focusModeStatus = FocusModeStatus(authorizationState: .authorized, isFocused: false)
+
+        #expect(store.effectiveNotificationSoundEnabled == false)
+    }
+
     @Test func focusModeActive_mutesScheduledNotificationSound() async {
         let notificationSpy = NotificationServiceSpy()
         let focusSpy = FocusModeServiceSpy()
@@ -479,6 +515,160 @@ struct TimerStoreTests {
     private func drainMainActorTaskQueue() async {
         await Task.yield()
         await Task.yield()
+    }
+}
+
+#if os(iOS) || os(macOS)
+    @MainActor
+    private final class AmbientNoiseServiceSpy: AmbientNoiseServicing {
+        var startCallCount = 0
+        var stopCallCount = 0
+        var lastStartVolume: Double?
+        var lastSetVolume: Double?
+
+        func start(volume: Double) {
+            self.startCallCount += 1
+            self.lastStartVolume = volume
+        }
+
+        func stop() {
+            self.stopCallCount += 1
+        }
+
+        func setVolume(_ volume: Double) {
+            self.lastSetVolume = volume
+        }
+    }
+
+    @MainActor
+    @Suite("AmbientNoise")
+    struct AmbientNoiseTests {
+        private func makeStore() -> (TimerStore, AmbientNoiseServiceSpy) {
+            let noiseSpy = AmbientNoiseServiceSpy()
+            let store = TimerStore(
+                notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied),
+                focusModeService: FocusModeServiceSpy(),
+                ambientNoiseService: noiseSpy
+            )
+            store.config.ambientNoiseEnabled = true
+            store.config.ambientNoiseVolume = 0.5
+            return (store, noiseSpy)
+        }
+
+        @Test func focusStart_startsNoise() {
+            let (store, spy) = self.makeStore()
+            store.start()
+            #expect(spy.startCallCount == 1)
+            #expect(spy.lastStartVolume == 0.5)
+        }
+
+        @Test func pause_stopsNoise() {
+            let (store, spy) = self.makeStore()
+            store.start()
+            store.pause()
+            #expect(spy.stopCallCount == 1)
+        }
+
+        @Test func resume_restartsNoise() {
+            let (store, spy) = self.makeStore()
+            store.start()
+            store.pause()
+            store.resume()
+            #expect(spy.startCallCount == 2)
+        }
+
+        @Test func reset_stopsNoise() {
+            let (store, spy) = self.makeStore()
+            store.start()
+            store.reset()
+            #expect(spy.stopCallCount >= 1)
+        }
+
+        @Test func breakSession_stopsNoise() {
+            let (store, spy) = self.makeStore()
+            let now = Date()
+            store.now = now
+            store.snapshot = TimerSnapshot(
+                sessionType: .focus,
+                timerState: .running,
+                startedAt: now.addingTimeInterval(-1500),
+                endDate: now.addingTimeInterval(-1),
+                pausedRemainingSec: nil,
+                completedFocusCount: 0,
+                boundaryStopPolicy: .none
+            )
+
+            store.handleScenePhaseChange(.active)
+
+            // After focus → short break transition, noise should stop
+            #expect(store.sessionType == .shortBreak)
+            #expect(spy.stopCallCount >= 1)
+        }
+
+        @Test func noiseDisabled_doesNotStart() {
+            let (store, spy) = self.makeStore()
+            store.config.ambientNoiseEnabled = false
+            store.start()
+            #expect(spy.startCallCount == 0)
+            #expect(spy.stopCallCount >= 1)
+        }
+
+        @Test func setVolume_updatesService() {
+            let (store, spy) = self.makeStore()
+            store.start()
+            store.updateAmbientNoiseVolume(0.8)
+            #expect(spy.lastSetVolume == 0.8)
+        }
+    }
+#endif
+
+@Suite("PulseVisual")
+struct PulseVisualTests {
+    @Test func heartbeatEnvelope_peakNearPhaseStart() {
+        let peakIntensity = PulseVisual.heartbeatEnvelope(phase: 0.08)
+        let midIntensity = PulseVisual.heartbeatEnvelope(phase: 0.5)
+
+        #expect(peakIntensity > 0.8)
+        #expect(midIntensity < 0.1)
+    }
+
+    @Test func heartbeatEnvelope_hasSecondPeak() {
+        let secondPeak = PulseVisual.heartbeatEnvelope(phase: 0.18)
+        let valley = PulseVisual.heartbeatEnvelope(phase: 0.4)
+
+        #expect(secondPeak > valley)
+    }
+
+    @Test func heartbeatEnvelope_clampsToOne() {
+        for phase in stride(from: 0.0, through: 1.0, by: 0.01) {
+            let value = PulseVisual.heartbeatEnvelope(phase: phase)
+            #expect(value >= 0.0)
+            #expect(value <= 1.0)
+        }
+    }
+
+    @Test func rippleIntensity_highAtWaveFront() {
+        let atFront = PulseVisual.rippleIntensity(distance: 0.14, beatPhase: 0.1, beatPeriod: 1.0)
+        let farFromFront = PulseVisual.rippleIntensity(distance: 0.8, beatPhase: 0.1, beatPeriod: 1.0)
+
+        #expect(atFront > farFromFront)
+    }
+
+    @Test func sessionAlpha_focusAlwaysOne() {
+        #expect(PulseVisual.sessionAlpha(sessionType: .focus, progress: 0.0) == 1.0)
+        #expect(PulseVisual.sessionAlpha(sessionType: .focus, progress: 0.5) == 1.0)
+        #expect(PulseVisual.sessionAlpha(sessionType: .focus, progress: 1.0) == 1.0)
+    }
+
+    @Test func sessionAlpha_breakDecaysButNeverZero() {
+        let start = PulseVisual.sessionAlpha(sessionType: .shortBreak, progress: 0.0)
+        let mid = PulseVisual.sessionAlpha(sessionType: .shortBreak, progress: 0.5)
+        let end = PulseVisual.sessionAlpha(sessionType: .shortBreak, progress: 1.0)
+
+        #expect(start == 1.0)
+        #expect(mid < start)
+        #expect(end < mid)
+        #expect(end >= 0.05)
     }
 }
 

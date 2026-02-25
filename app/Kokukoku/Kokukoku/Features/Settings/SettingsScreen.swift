@@ -7,8 +7,10 @@ struct SettingsScreen: View {
         Form {
             self.durationsSection
             self.behaviorSection
+            self.appearanceSection
             self.focusModeSection
             self.notificationsSection
+            self.audioSection
 
             if let lastErrorMessage = self.store.lastErrorMessage {
                 Section("Diagnostics") {
@@ -65,6 +67,22 @@ struct SettingsScreen: View {
         }
     }
 
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            Toggle(
+                "Generative Mode",
+                isOn: Binding(
+                    get: { self.store.config.generativeModeEnabled },
+                    set: { self.store.updateGenerativeModeEnabled($0) }
+                )
+            )
+
+            Text("Replaces the progress bar with a rhythm animation.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var focusModeSection: some View {
         Section("System Focus") {
             HStack {
@@ -80,7 +98,15 @@ struct SettingsScreen: View {
                 }
             }
 
-            Text("When Focus is active, notification sound is muted.")
+            Toggle(
+                "Respect Focus Mode",
+                isOn: Binding(
+                    get: { self.store.config.respectFocusMode },
+                    set: { self.store.updateRespectFocusMode($0) }
+                )
+            )
+
+            Text("When enabled, notification sound is muted while Focus is active.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -103,6 +129,34 @@ struct SettingsScreen: View {
             Text("Effective sound: \(self.store.effectiveNotificationSoundEnabled ? "On" : "Off")")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var audioSection: some View {
+        if self.store.config.notificationSoundEnabled {
+            Section("Audio") {
+                Toggle(
+                    "Ambient Noise",
+                    isOn: Binding(
+                        get: { self.store.config.ambientNoiseEnabled },
+                        set: { self.store.updateAmbientNoiseEnabled($0) }
+                    )
+                )
+
+                if self.store.config.ambientNoiseEnabled {
+                    HStack {
+                        Text("Volume")
+                        Slider(
+                            value: Binding(
+                                get: { self.store.config.ambientNoiseVolume },
+                                set: { self.store.updateAmbientNoiseVolume($0) }
+                            ),
+                            in: 0 ... 1
+                        )
+                    }
+                }
+            }
         }
     }
 

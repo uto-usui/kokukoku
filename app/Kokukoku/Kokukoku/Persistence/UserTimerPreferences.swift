@@ -10,6 +10,10 @@ final class UserTimerPreferences {
     var longBreakFrequency: Int
     var autoStart: Bool
     var notificationSoundEnabled: Bool
+    var respectFocusMode: Bool = true
+    var ambientNoiseEnabled: Bool = false
+    var ambientNoiseVolume: Double = 0.5
+    var generativeModeEnabled: Bool = false
     var boundaryStopPolicyRaw: String
     var updatedAt: Date
 
@@ -21,6 +25,10 @@ final class UserTimerPreferences {
         longBreakFrequency: Int,
         autoStart: Bool,
         notificationSoundEnabled: Bool,
+        respectFocusMode: Bool = true,
+        ambientNoiseEnabled: Bool = false,
+        ambientNoiseVolume: Double = 0.5,
+        generativeModeEnabled: Bool = false,
         boundaryStopPolicyRaw: String,
         updatedAt: Date = Date()
     ) {
@@ -31,6 +39,10 @@ final class UserTimerPreferences {
         self.longBreakFrequency = longBreakFrequency
         self.autoStart = autoStart
         self.notificationSoundEnabled = notificationSoundEnabled
+        self.respectFocusMode = respectFocusMode
+        self.ambientNoiseEnabled = ambientNoiseEnabled
+        self.ambientNoiseVolume = ambientNoiseVolume
+        self.generativeModeEnabled = generativeModeEnabled
         self.boundaryStopPolicyRaw = boundaryStopPolicyRaw
         self.updatedAt = updatedAt
     }

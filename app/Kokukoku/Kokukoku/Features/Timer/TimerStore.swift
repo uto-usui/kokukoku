@@ -22,18 +22,27 @@ final class TimerStore {
     @ObservationIgnored private let focusModeService: any FocusModeServicing
     @ObservationIgnored let watchConnectivityService: any WatchSyncServicing
     @ObservationIgnored let liveActivityService = LiveActivityService()
+    #if os(iOS) || os(macOS)
+        @ObservationIgnored private let ambientNoiseService: any AmbientNoiseServicing
+    #endif
     @ObservationIgnored private var ticker: Timer?
 
     init() {
         self.notificationService = NotificationService()
         self.focusModeService = FocusModeService()
         self.watchConnectivityService = WatchConnectivityService()
+        #if os(iOS) || os(macOS)
+            self.ambientNoiseService = AmbientNoiseService()
+        #endif
     }
 
     init(notificationService: any NotificationServicing) {
         self.notificationService = notificationService
         self.focusModeService = FocusModeService()
         self.watchConnectivityService = WatchConnectivityService()
+        #if os(iOS) || os(macOS)
+            self.ambientNoiseService = AmbientNoiseService()
+        #endif
     }
 
     init(
@@ -43,6 +52,9 @@ final class TimerStore {
         self.notificationService = notificationService
         self.focusModeService = focusModeService
         self.watchConnectivityService = WatchConnectivityService()
+        #if os(iOS) || os(macOS)
+            self.ambientNoiseService = AmbientNoiseService()
+        #endif
     }
 
     init(
@@ -53,7 +65,23 @@ final class TimerStore {
         self.notificationService = notificationService
         self.focusModeService = focusModeService
         self.watchConnectivityService = watchConnectivityService
+        #if os(iOS) || os(macOS)
+            self.ambientNoiseService = AmbientNoiseService()
+        #endif
     }
+
+    #if os(iOS) || os(macOS)
+        init(
+            notificationService: any NotificationServicing,
+            focusModeService: any FocusModeServicing,
+            ambientNoiseService: any AmbientNoiseServicing
+        ) {
+            self.notificationService = notificationService
+            self.focusModeService = focusModeService
+            self.watchConnectivityService = WatchConnectivityService()
+            self.ambientNoiseService = ambientNoiseService
+        }
+    #endif
 
     deinit {
         self.ticker?.invalidate()
@@ -117,7 +145,10 @@ final class TimerStore {
     }
 
     var effectiveNotificationSoundEnabled: Bool {
-        self.config.notificationSoundEnabled && !self.focusModeStatus.isFocused
+        if self.config.respectFocusMode {
+            return self.config.notificationSoundEnabled && !self.focusModeStatus.isFocused
+        }
+        return self.config.notificationSoundEnabled
     }
 }
 
@@ -146,6 +177,7 @@ extension TimerStore {
         self.refreshNotificationAuthorizationState()
         self.refreshFocusModeStatus()
         self.processElapsedSessionsIfNeeded()
+        self.syncAmbientNoise()
     }
 
     func performPrimaryAction() {
@@ -171,6 +203,11 @@ extension TimerStore {
 
         self.requestNotificationPermissionAndScheduleIfNeeded()
         self.syncLiveActivity()
+        self.syncAmbientNoise()
+
+        #if os(iOS)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
     }
 
     func pause() {
@@ -184,6 +221,11 @@ extension TimerStore {
         self.snapshot.timerState = .paused
         self.notificationService.cancelSessionEndNotification()
         self.syncLiveActivity()
+        self.syncAmbientNoise()
+
+        #if os(iOS)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
     }
 
     func resume() {
@@ -206,6 +248,11 @@ extension TimerStore {
 
         self.requestNotificationPermissionAndScheduleIfNeeded()
         self.syncLiveActivity()
+        self.syncAmbientNoise()
+
+        #if os(iOS)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
     }
 
     func reset() {
@@ -218,6 +265,7 @@ extension TimerStore {
         self.snapshot.completedFocusCount = 0
         self.notificationService.cancelSessionEndNotification()
         self.syncLiveActivity()
+        self.syncAmbientNoise()
     }
 
     func skip() {
@@ -263,6 +311,17 @@ extension TimerStore {
         self.config.notificationSoundEnabled = enabled
         self.persistPreferences()
         self.requestNotificationPermissionAndScheduleIfNeeded()
+    }
+
+    func updateRespectFocusMode(_ enabled: Bool) {
+        self.config.respectFocusMode = enabled
+        self.persistPreferences()
+        self.requestNotificationPermissionAndScheduleIfNeeded()
+    }
+
+    func updateGenerativeModeEnabled(_ enabled: Bool) {
+        self.config.generativeModeEnabled = enabled
+        self.persistPreferences()
     }
 
     func requestFocusModeAuthorization() {
@@ -409,6 +468,7 @@ extension TimerStore {
             self.snapshot.endDate = nil
             self.snapshot.pausedRemainingSec = nextDuration
             self.syncLiveActivity()
+            self.syncAmbientNoise()
             return
         }
 
@@ -417,6 +477,7 @@ extension TimerStore {
             self.snapshot.startedAt = nil
             self.snapshot.endDate = nil
             self.syncLiveActivity()
+            self.syncAmbientNoise()
             return
         }
 
@@ -426,6 +487,7 @@ extension TimerStore {
         self.snapshot.endDate = context.endedAt.addingTimeInterval(TimeInterval(nextDuration))
         self.requestNotificationPermissionAndScheduleIfNeeded()
         self.syncLiveActivity()
+        self.syncAmbientNoise()
     }
 
     private func handleConfigChangeWhileActiveTimer() {
@@ -445,6 +507,41 @@ extension TimerStore {
         }
 
         self.syncLiveActivity()
+    }
+}
+
+extension TimerStore {
+    func updateAmbientNoiseEnabled(_ enabled: Bool) {
+        self.config.ambientNoiseEnabled = enabled
+        self.persistPreferences()
+        self.syncAmbientNoise()
+    }
+
+    func updateAmbientNoiseVolume(_ volume: Double) {
+        self.config.ambientNoiseVolume = volume
+        self.persistPreferences()
+        #if os(iOS) || os(macOS)
+            self.ambientNoiseService.setVolume(volume)
+        #endif
+    }
+}
+
+extension TimerStore {
+    /// Start or stop ambient noise based on current timer state and config.
+    ///
+    /// Noise plays only when: ambient noise is enabled, the current session is focus, and the timer is running.
+    private func syncAmbientNoise() {
+        #if os(iOS) || os(macOS)
+            let shouldPlay = self.config.ambientNoiseEnabled
+                && self.snapshot.sessionType == .focus
+                && self.snapshot.timerState == .running
+
+            if shouldPlay {
+                self.ambientNoiseService.start(volume: self.config.ambientNoiseVolume)
+            } else {
+                self.ambientNoiseService.stop()
+            }
+        #endif
     }
 }
 
@@ -496,5 +593,4 @@ extension TimerStore {
             }
         }
     }
-
 }

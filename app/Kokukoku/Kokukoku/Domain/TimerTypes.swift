@@ -94,15 +94,28 @@ struct TimerConfig: Codable, Equatable {
     var autoStart: Bool
     /// Whether notification sounds are enabled on session completion.
     var notificationSoundEnabled: Bool
+    /// Whether the timer respects system Focus Mode for muting notification sounds.
+    /// When `true`, notification sound is automatically muted while Focus is active.
+    var respectFocusMode: Bool
+    /// Whether ambient pink noise plays during focus sessions.
+    var ambientNoiseEnabled: Bool
+    /// Volume level for ambient noise (0.0–1.0).
+    var ambientNoiseVolume: Double
+    /// Whether generative mode (pulse animation) replaces the standard progress bar.
+    var generativeModeEnabled: Bool
 
-    /// Standard Pomodoro defaults: 25/5/15 minutes, frequency 4, auto-start on, sound on.
+    /// Standard Pomodoro defaults: 25/5/15 minutes, frequency 4, auto-start on, sound on, respect Focus on.
     static let `default` = TimerConfig(
         focusDurationSec: 25 * 60,
         shortBreakDurationSec: 5 * 60,
         longBreakDurationSec: 15 * 60,
         longBreakFrequency: 4,
         autoStart: true,
-        notificationSoundEnabled: true
+        notificationSoundEnabled: true,
+        respectFocusMode: true,
+        ambientNoiseEnabled: false,
+        ambientNoiseVolume: 0.5,
+        generativeModeEnabled: false
     )
 
     /// Sets the focus duration in minutes, clamped to a minimum of 1 minute.

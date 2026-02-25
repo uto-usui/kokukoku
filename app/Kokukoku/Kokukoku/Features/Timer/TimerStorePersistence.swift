@@ -24,6 +24,10 @@ extension TimerStore {
                 longBreakFrequency: TimerConfig.default.longBreakFrequency,
                 autoStart: TimerConfig.default.autoStart,
                 notificationSoundEnabled: TimerConfig.default.notificationSoundEnabled,
+                respectFocusMode: TimerConfig.default.respectFocusMode,
+                ambientNoiseEnabled: TimerConfig.default.ambientNoiseEnabled,
+                ambientNoiseVolume: TimerConfig.default.ambientNoiseVolume,
+                generativeModeEnabled: TimerConfig.default.generativeModeEnabled,
                 boundaryStopPolicyRaw: BoundaryStopPolicy.none.rawValue
             )
 
@@ -43,7 +47,11 @@ extension TimerStore {
             longBreakDurationSec: max(60, preferences.longBreakDurationSec),
             longBreakFrequency: max(1, preferences.longBreakFrequency),
             autoStart: preferences.autoStart,
-            notificationSoundEnabled: preferences.notificationSoundEnabled
+            notificationSoundEnabled: preferences.notificationSoundEnabled,
+            respectFocusMode: preferences.respectFocusMode,
+            ambientNoiseEnabled: preferences.ambientNoiseEnabled,
+            ambientNoiseVolume: preferences.ambientNoiseVolume,
+            generativeModeEnabled: preferences.generativeModeEnabled
         )
 
         self.snapshot.boundaryStopPolicy = preferences.boundaryStopPolicy
@@ -68,6 +76,10 @@ extension TimerStore {
         preferences.longBreakFrequency = self.config.longBreakFrequency
         preferences.autoStart = self.config.autoStart
         preferences.notificationSoundEnabled = self.config.notificationSoundEnabled
+        preferences.respectFocusMode = self.config.respectFocusMode
+        preferences.ambientNoiseEnabled = self.config.ambientNoiseEnabled
+        preferences.ambientNoiseVolume = self.config.ambientNoiseVolume
+        preferences.generativeModeEnabled = self.config.generativeModeEnabled
         preferences.boundaryStopPolicy = self.snapshot.boundaryStopPolicy
         preferences.updatedAt = Date()
 
