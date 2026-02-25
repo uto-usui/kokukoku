@@ -52,8 +52,12 @@ final class WatchConnectivityService: NSObject, WatchSyncServicing {
             do {
                 try WCSession.default.updateApplicationContext(context)
             } catch {
+                let nsError = error as NSError
+                let isWatchNotInstalled = nsError.domain == "WCErrorDomain" && nsError.code == 7006
                 logger.error("updateApplicationContext failed: \(error.localizedDescription)")
-                assertionFailure("updateApplicationContext failed: \(error)")
+                if !isWatchNotInstalled {
+                    assertionFailure("updateApplicationContext failed: \(error)")
+                }
             }
         #endif
     }
