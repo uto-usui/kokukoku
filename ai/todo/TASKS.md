@@ -120,30 +120,30 @@
 設計: `docs/plans/2026-02-25-audio-haptics-design.md`
 
 ### Haptics 拡充
-- [ ] Start / Pause / Resume に UIImpactFeedbackGenerator 追加（TimerStore.swift、各1行）
+- [x] Start / Pause / Resume に UIImpactFeedbackGenerator 追加（TimerStore.swift、各1行）
 - [ ] 手動確認（iOS Simulator or 実機）
 
 ### Focus Mode オプトアウト
-- [ ] TimerConfig に `respectFocusMode: Bool` 追加（default: true）
-- [ ] effectiveNotificationSoundEnabled の条件分岐修正
-- [ ] UserTimerPreferences に `respectFocusMode` 追加
-- [ ] persistPreferences / applyPreferences に読み書き追加
-- [ ] TimerStore に `updateRespectFocusMode()` 追加
-- [ ] SettingsScreen "System Focus" セクションに Toggle 追加
-- [ ] Unit test: respectFocusMode ON/OFF × isFocused の組み合わせ
+- [x] TimerConfig に `respectFocusMode: Bool` 追加（default: true）
+- [x] effectiveNotificationSoundEnabled の条件分岐修正
+- [x] UserTimerPreferences に `respectFocusMode` 追加
+- [x] persistPreferences / applyPreferences に読み書き追加
+- [x] TimerStore に `updateRespectFocusMode()` 追加
+- [x] SettingsScreen "System Focus" セクションに Toggle 追加
+- [x] Unit test: respectFocusMode ON/OFF × isFocused の組み合わせ
 
 ### アンビエントノイズ（ピンクノイズ）
 モックアップ: `mockups/ambient-noise.html`
 確定パラメータ: Pink noise, Cutoff 648 Hz, Resonance 1.0, Volume 50%, Fade 1.0s
 
-- [ ] AmbientNoiseServicing protocol 定義
-- [ ] AmbientNoiseService 実装（AVAudioEngine + AVAudioSourceNode + BiquadFilter、ピンクノイズ）
-- [ ] TimerConfig に `ambientNoiseEnabled` / `ambientNoiseVolume` 追加
-- [ ] UserTimerPreferences に追加 + persist/apply
-- [ ] TimerStore にライフサイクル制御追加（start/pause/resume/complete/scenePhase）
-- [ ] SettingsScreen "Audio" セクション追加（Toggle + Volume Slider）
-- [ ] Unit test: ライフサイクル制御（mock protocol）
-- [ ] Unit test: 設定の永続化
+- [x] AmbientNoiseServicing protocol 定義
+- [x] AmbientNoiseService 実装（AVAudioEngine + AVAudioSourceNode + BiquadFilter、ピンクノイズ）
+- [x] TimerConfig に `ambientNoiseEnabled` / `ambientNoiseVolume` 追加
+- [x] UserTimerPreferences に追加 + persist/apply
+- [x] TimerStore にライフサイクル制御追加（start/pause/resume/complete/scenePhase）
+- [x] SettingsScreen "Audio" セクション追加（Toggle + Volume Slider）
+- [x] Unit test: ライフサイクル制御（mock protocol）
+- [x] Unit test: 設定の永続化
 - [ ] 手動確認（音質・ボリューム・他アプリとの共存）
 
 ## Generative Mode (Pulse)
@@ -153,11 +153,11 @@
 
 - [x] 設計ドキュメント作成
 - [x] HTML モックアップ作成・パラメータ確定
-- [ ] Swift 実装計画作成
-- [ ] Swift 実装
-  - [ ] GenerativeVisual protocol + PulseVisual
-  - [ ] GenerativeTimerView (Canvas + TimelineView)
-  - [ ] TimerScreen integration
-  - [ ] Settings toggle (generativeModeEnabled)
-  - [ ] Unit tests (heartbeat envelope, ripple, decay, settings)
-  - [ ] Accessibility (reduceMotion fallback, VoiceOver)
+- [x] Swift 実装計画作成
+- [x] Swift 実装
+  - [x] GenerativeVisual protocol + PulseVisual
+  - [x] GenerativeTimerView (Canvas + TimelineView)
+  - [x] TimerScreen integration
+  - [x] Settings toggle (generativeModeEnabled)
+  - [x] Unit tests (heartbeat envelope, ripple, decay, settings)
+  - [x] Accessibility (reduceMotion fallback, VoiceOver)
