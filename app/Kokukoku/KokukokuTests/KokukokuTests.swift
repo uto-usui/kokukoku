@@ -481,3 +481,59 @@ struct TimerStoreTests {
         await Task.yield()
     }
 }
+
+@Suite("WatchSyncPayload")
+struct WatchSyncPayloadTests {
+    @Test func idleState_excludesNilOptionals() {
+        let snapshot = TimerSnapshot.initial
+        let context = WatchSyncPayload.build(snapshot: snapshot, config: .default, now: Date())
+
+        #expect(context["endDateEpoch"] == nil)
+        #expect(context["pausedRemainingSec"] == nil)
+        #expect(context["timerState"] as? String == "idle")
+        #expect(context["sessionType"] as? String == "focus")
+    }
+
+    @Test func idleState_includesSessionDuration() {
+        let snapshot = TimerSnapshot.initial
+        let config = TimerConfig.default
+        let context = WatchSyncPayload.build(snapshot: snapshot, config: config, now: Date())
+
+        #expect(context["sessionDurationSec"] as? Int == config.focusDurationSec)
+    }
+
+    @Test func runningState_includesEndDate() {
+        var snapshot = TimerSnapshot.initial
+        let now = Date()
+        snapshot.timerState = .running
+        snapshot.endDate = now.addingTimeInterval(1500)
+        let context = WatchSyncPayload.build(snapshot: snapshot, config: .default, now: now)
+
+        #expect(context["endDateEpoch"] as? Double != nil)
+        #expect(context["pausedRemainingSec"] == nil)
+        #expect(context["timerState"] as? String == "running")
+    }
+
+    @Test func pausedState_includesPausedRemaining() {
+        var snapshot = TimerSnapshot.initial
+        snapshot.timerState = .paused
+        snapshot.pausedRemainingSec = 600
+        let context = WatchSyncPayload.build(snapshot: snapshot, config: .default, now: Date())
+
+        #expect(context["pausedRemainingSec"] as? Int == 600)
+        #expect(context["endDateEpoch"] == nil)
+        #expect(context["timerState"] as? String == "paused")
+    }
+
+    @Test func allValues_arePlistCompatibleTypes() {
+        var snapshot = TimerSnapshot.initial
+        snapshot.timerState = .running
+        snapshot.endDate = Date().addingTimeInterval(1500)
+        let context = WatchSyncPayload.build(snapshot: snapshot, config: .default, now: Date())
+
+        for (key, value) in context {
+            let isValid = value is String || value is Int || value is Double
+            #expect(isValid, "Key '\(key)' has non-plist type: \(type(of: value))")
+        }
+    }
+}

@@ -1,8 +1,11 @@
 import Foundation
+import OSLog
 
 #if os(iOS)
     import WatchConnectivity
 #endif
+
+private let logger = Logger(subsystem: "com.uto-usui.Kokukoku", category: "WatchSync")
 
 enum WatchTimerCommand: String {
     case primaryAction
@@ -44,27 +47,13 @@ final class WatchConnectivityService: NSObject, WatchSyncServicing {
                 return
             }
 
-            let sessionDuration = TimerEngine.duration(for: snapshot.sessionType, config: config)
-            var context: [String: Any] = [
-                Keys.sessionType: snapshot.sessionType.rawValue,
-                Keys.timerState: snapshot.timerState.rawValue,
-                Keys.boundaryStopPolicy: snapshot.boundaryStopPolicy.rawValue,
-                Keys.completedFocusCount: snapshot.completedFocusCount,
-                Keys.longBreakFrequency: config.longBreakFrequency,
-                Keys.serverNowEpoch: now.timeIntervalSince1970,
-                Keys.sessionDurationSec: sessionDuration
-            ]
-            if let endDate = snapshot.endDate {
-                context[Keys.endDateEpoch] = endDate.timeIntervalSince1970
-            }
-            if let pausedSec = snapshot.pausedRemainingSec {
-                context[Keys.pausedRemainingSec] = pausedSec
-            }
+            let context = WatchSyncPayload.build(snapshot: snapshot, config: config, now: now)
 
             do {
                 try WCSession.default.updateApplicationContext(context)
             } catch {
-                // Non-fatal. We'll push the latest snapshot again on next state change.
+                logger.error("updateApplicationContext failed: \(error.localizedDescription)")
+                assertionFailure("updateApplicationContext failed: \(error)")
             }
         #endif
     }
@@ -105,6 +94,28 @@ final class WatchConnectivityService: NSObject, WatchSyncServicing {
         }
     }
 #endif
+
+enum WatchSyncPayload {
+    static func build(snapshot: TimerSnapshot, config: TimerConfig, now: Date) -> [String: Any] {
+        let sessionDuration = TimerEngine.duration(for: snapshot.sessionType, config: config)
+        var context: [String: Any] = [
+            Keys.sessionType: snapshot.sessionType.rawValue,
+            Keys.timerState: snapshot.timerState.rawValue,
+            Keys.boundaryStopPolicy: snapshot.boundaryStopPolicy.rawValue,
+            Keys.completedFocusCount: snapshot.completedFocusCount,
+            Keys.longBreakFrequency: config.longBreakFrequency,
+            Keys.serverNowEpoch: now.timeIntervalSince1970,
+            Keys.sessionDurationSec: sessionDuration
+        ]
+        if let endDate = snapshot.endDate {
+            context[Keys.endDateEpoch] = endDate.timeIntervalSince1970
+        }
+        if let pausedSec = snapshot.pausedRemainingSec {
+            context[Keys.pausedRemainingSec] = pausedSec
+        }
+        return context
+    }
+}
 
 private enum Keys {
     static let command = "command"
