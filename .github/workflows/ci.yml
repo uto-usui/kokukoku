@@ -24,3 +24,6 @@ jobs:
 
       - name: Test (macOS)
         run: make test-macos
+
+      - name: Build (iOS Simulator)
+        run: make build-ios
