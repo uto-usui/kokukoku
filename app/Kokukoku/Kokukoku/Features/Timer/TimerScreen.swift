@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TimerScreen: View {
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @Bindable var store: TimerStore
     @State private var secondaryControlsReveal = 0
@@ -14,9 +15,26 @@ struct TimerScreen: View {
                 self.standardBody
             }
         }
+        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
+        .overlay {
+            if self.colorSchemeContrast != .increased {
+                GrainOverlay()
+                    .opacity(0.04)
+                    .allowsHitTesting(false)
+                    .ignoresSafeArea()
+            }
+        }
         .navigationTitle("Kokukoku")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Kokukoku")
+                        .foregroundStyle(.tertiary)
+                        .opacity(self.store.timerState == .running ? 0 : 1)
+                        .animation(.easeInOut(duration: 0.3), value: self.store.timerState)
+                }
+            }
         #endif
             .transaction { transaction in
                 if self.accessibilityReduceMotion {
@@ -36,22 +54,22 @@ struct TimerScreen: View {
                     .accessibilityHidden(true)
                 Text(self.store.sessionType.title)
             }
-            .font(.caption2)
-            .foregroundStyle(.tertiary)
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
             .accessibilityElement(children: .combine)
             .padding(.bottom, 6)
 
             Text(self.store.formattedRemainingTime)
-                .font(.system(size: 96, weight: .thin))
+                .font(.system(size: 100, weight: .thin))
                 .monospacedDigit()
-                .contentTransition(self.accessibilityReduceMotion ? .identity : .numericText())
+                .contentTransition(.numericText(countsDown: true))
                 .foregroundStyle(.primary)
                 .accessibilityLabel("Remaining time \(self.store.formattedRemainingTime)")
                 .accessibilityIdentifier("timer.remaining")
 
             Text(self.store.focusCycleStatusText)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 .padding(.top, 4)
 
             Spacer()
@@ -66,7 +84,7 @@ struct TimerScreen: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.plain)
-            .background(.ultraThinMaterial, in: Capsule())
+            .background(Capsule().fill(.tertiary))
             .accessibilityIdentifier("timer.primaryAction")
             .padding(.bottom, 16)
 
@@ -180,6 +198,48 @@ struct TimerScreen: View {
             .orange
         case .paused, .idle:
             .blue
+        }
+    }
+}
+
+// MARK: - Grain Overlay
+
+/// Tiled grayscale noise texture for surface materiality.
+///
+/// Generates a 128x128 noise `CGImage` once at load time and tiles it
+/// across the view. Apply at low opacity (0.03–0.05) over a material
+/// background to convert digital smoothness into physical surface texture.
+private struct GrainOverlay: View {
+    private static let grainImage: CGImage? = {
+        let size = 128
+        var pixels = [UInt8](repeating: 0, count: size * size * 4)
+        for i in 0 ..< size * size {
+            let val = UInt8.random(in: 0 ... 255)
+            pixels[i * 4] = val
+            pixels[i * 4 + 1] = val
+            pixels[i * 4 + 2] = val
+            pixels[i * 4 + 3] = 255
+        }
+        guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
+        return CGImage(
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bitsPerPixel: 32,
+            bytesPerRow: size * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+            provider: provider,
+            decode: nil,
+            shouldInterpolate: false,
+            intent: .defaultIntent
+        )
+    }()
+
+    var body: some View {
+        if let cgImage = Self.grainImage {
+            Image(decorative: cgImage, scale: 2)
+                .resizable(resizingMode: .tile)
         }
     }
 }
