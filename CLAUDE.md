@@ -100,6 +100,26 @@ For macOS-only builds/tests, fall back to `make build-macos` / `make test-macos`
 
 **No separate ARCHITECTURE.md** — this file (CLAUDE.md) serves that role.
 
+## Build Verification Strategy
+
+See `docs/plans/2026-02-25-build-verification-strategy.md` for full design rationale and measured build times.
+
+**3-stage approach (cost-effective for LLM development):**
+
+1. **Spike build** — Run `make build-macos` (~12s) after structural changes (new files, target membership, Info.plist, pbxproj edits). Catches compilation errors early without blocking development.
+2. **Background iOS build** — Run `make build-ios` (~25s) in background after completing a logical unit of work. Catches cross-platform issues (WatchConnectivity, #if os() guards, widget extensions) without blocking.
+3. **Full gate** — Run `make ci` (lint + test-macos + build-ios) before commit/push. This is the final quality gate.
+
+**When to trigger each stage:**
+- Stage 1: New file added, target membership changed, import added, `#if os()` block modified
+- Stage 2: After completing a feature or fixing a bug (run in background while continuing)
+- Stage 3: Before every commit
+
+**Key safeguards:**
+- `WatchConnectivityService` uses `assertionFailure` in Debug to crash on invalid plist payloads
+- `WatchSyncPayload.build()` is a pure function with unit tests for plist type safety
+- CI runs lint + macOS tests + iOS Simulator build on every PR and push to main/master
+
 ## Planning Documents
 
 Detailed specs live in `ai/todo/`:

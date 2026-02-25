@@ -110,7 +110,7 @@
 
 設計: `docs/plans/2026-02-25-build-verification-strategy.md`
 
-- [ ] Task 1: `make ci` に `build-ios` ターゲット追加 + CI ワークフロー更新
-- [ ] Task 2: `WatchConnectivityService` の catch に `assertionFailure` 追加
-- [ ] Task 3: sync ペイロード構築を純粋関数に分離しテスト追加
-- [ ] Task 4: CLAUDE.md に Build Verification Strategy セクション追加
+- [x] Task 1: `make ci` に `build-ios` ターゲット追加 + CI ワークフロー更新
+- [x] Task 2: `WatchConnectivityService` の catch に `assertionFailure` 追加
+- [x] Task 3: sync ペイロード構築を純粋関数に分離しテスト追加
+- [x] Task 4: CLAUDE.md に Build Verification Strategy セクション追加
