@@ -1,6 +1,7 @@
 # Project Agent Notes
 
 See [README.md](README.md) for project overview, platforms, setup, and commands.
+For architecture, design rules, tooling, and documentation conventions, see [CLAUDE.md](CLAUDE.md).
 
 ## Engineering Rules
 
