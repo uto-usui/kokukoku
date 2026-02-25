@@ -4,7 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Kokukoku** (刻々) — A native Pomodoro timer for iOS and macOS. Built with Swift 6 + SwiftUI. "Radical simplicity" is the core product philosophy: timer only, no task management, no AI features, no subscription.
+**Kokukoku** (刻々) — A native Pomodoro timer for iOS, macOS, and watchOS. Built with Swift 6 + SwiftUI. "Radical simplicity" is the core product philosophy: timer only, no task management, no AI features, no subscription.
+
+**Platforms and extensions:**
+- iOS + macOS: core app (NavigationStack / NavigationSplitView)
+- macOS: MenuBarExtra for quick access
+- iOS: Widget + Live Activity (WidgetKit / ActivityKit)
+- watchOS: companion app via WatchConnectivity
+- Focus mode integration (INFocusStatusCenter)
 
 ## Commands
 
@@ -38,24 +45,35 @@ app/Kokukoku/Kokukoku/
 │   └── TimerEngine.swift      # Pure stateless functions for transitions, time calc, progress
 ├── Features/
 │   ├── Timer/
-│   │   ├── TimerStore.swift   # @Observable store: state management, ticker loop, scene phase handling
-│   │   └── TimerScreen.swift  # Main timer UI
+│   │   ├── TimerStore.swift           # @Observable store: state management, ticker loop, scene phase handling
+│   │   ├── TimerStoreTypes.swift      # Internal value types (SessionRecordPayload, BoundaryTransitionContext)
+│   │   ├── TimerStorePersistence.swift # SwiftData binding and preference sync
+│   │   ├── TimerStoreWatchSync.swift  # WatchConnectivity state sync
+│   │   └── TimerScreen.swift          # Main timer UI
+│   ├── MenuBar/
+│   │   └── MenuBarTimerView.swift     # macOS MenuBarExtra timer view
 │   ├── History/
 │   │   └── HistoryScreen.swift
 │   └── Settings/
 │       └── SettingsScreen.swift
+├── Shared/
+│   └── LiveActivity/
+│       └── KokukokuActivityAttributes.swift  # ActivityKit attributes shared with widget extension
 ├── Persistence/
 │   ├── SessionRecord.swift    # SwiftData @Model for completed session history
 │   └── UserTimerPreferences.swift  # SwiftData @Model for user settings
 └── Services/
-    └── NotificationService.swift   # Local notification scheduling/cancellation
+    ├── NotificationService.swift       # Local notification scheduling/cancellation
+    ├── FocusModeService.swift          # Focus mode (DnD) integration via INFocusStatusCenter
+    ├── WatchConnectivityService.swift  # iPhone <-> Watch state sync via WCSession
+    └── LiveActivityService.swift       # Live Activity lifecycle management
 ```
 
 **Key layers:**
 - **Domain** — Pure types and functions with no UI or framework dependencies. `TimerEngine` is stateless; all timer logic (transitions, remaining time, progress) is computed from inputs.
-- **Features** — `TimerStore` (@Observable) owns the mutable state and drives the ticker. Screens are SwiftUI views that read from the store.
+- **Features** — `TimerStore` (@Observable) owns the mutable state and drives the ticker. Split into extensions: core logic, persistence binding, watch sync. Screens are SwiftUI views that read from the store.
 - **Persistence** — SwiftData models. `SessionRecord` stores history; `UserTimerPreferences` stores settings.
-- **Services** — `NotificationService` wraps UserNotifications framework.
+- **Services** — `NotificationService`, `FocusModeService`, `WatchConnectivityService`, `LiveActivityService`. Each wraps a system framework behind a protocol.
 
 ## Critical Design Rules
 
