@@ -4,30 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Kokukoku** (刻々) — A native Pomodoro timer for iOS, macOS, and watchOS. Built with Swift 6 + SwiftUI. "Radical simplicity" is the core product philosophy: timer only, no task management, no AI features, no subscription.
-
-**Platforms and extensions:**
-- iOS + macOS: core app (NavigationStack / NavigationSplitView)
-- macOS: MenuBarExtra for quick access
-- iOS: Widget + Live Activity (WidgetKit / ActivityKit)
-- watchOS: companion app via WatchConnectivity
-- Focus mode integration (INFocusStatusCenter)
-
-## Commands
-
-```bash
-make bootstrap       # Install CLI tools (swiftformat, swiftlint, xcbeautify, xcodegen)
-make doctor          # Verify dev environment is ready
-make format          # Run swiftformat on app code
-make lint            # Run swiftlint --strict
-make build-macos     # Build for macOS
-make test-macos      # Run unit tests (KokukokuTests)
-make test-ui-macos   # Run UI tests (KokukokuUITests)
-make ci              # lint + test-macos (run before commit/push)
-make clean           # Clean build artifacts
-```
-
-Xcode project: `app/Kokukoku/Kokukoku.xcodeproj`, scheme: `Kokukoku`.
+See [README.md](README.md) for project overview, platforms, setup, and commands.
 
 To run a single test via xcodebuild:
 ```bash
