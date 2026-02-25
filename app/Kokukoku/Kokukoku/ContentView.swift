@@ -39,6 +39,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
+    @Namespace private var sheetTransition
     @State private var hasDismissedLaunchOverlay = false
     @Bindable var store: TimerStore
 
@@ -104,30 +105,79 @@ struct ContentView: View {
             .frame(minWidth: 900, minHeight: 600)
         }
     #else
+        @State private var showHistory = false
+        @State private var showSettings = false
+
         private var iosLayout: some View {
             NavigationStack {
                 TimerScreen(store: self.store)
                     .toolbar {
-                        ToolbarItemGroup(placement: .topBarTrailing) {
-                            NavigationLink {
-                                HistoryScreen()
-                            } label: {
-                                Image(systemName: "clock.arrow.circlepath")
-                            }
-                            .accessibilityLabel("History")
-                            .accessibilityIdentifier("nav.history")
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Menu {
+                                Toggle(
+                                    isOn: Binding(
+                                        get: { self.store.config.ambientNoiseEnabled },
+                                        set: { self.store.updateAmbientNoiseEnabled($0) }
+                                    )
+                                ) {
+                                    Label("Sound", systemImage: "speaker.wave.2")
+                                }
 
-                            NavigationLink {
-                                SettingsScreen(store: self.store)
+                                Button {
+                                    self.showHistory = true
+                                } label: {
+                                    Label("History", systemImage: "clock.arrow.circlepath")
+                                }
+
+                                Button {
+                                    self.showSettings = true
+                                } label: {
+                                    Label("Settings\u{2026}", systemImage: "gearshape")
+                                }
                             } label: {
-                                Image(systemName: "gearshape")
+                                Image(systemName: "ellipsis")
                             }
-                            .accessibilityLabel("Settings")
-                            .accessibilityIdentifier("nav.settings")
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.primary)
+                            .matchedTransitionSource(id: "systemMenu", in: self.sheetTransition)
+                            .accessibilityLabel("Menu")
+                            .accessibilityIdentifier("nav.system")
                         }
                     }
+                    .sheet(isPresented: self.$showHistory) {
+                        NavigationStack {
+                            HistoryScreen()
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button("", systemImage: "xmark") {
+                                            self.showHistory = false
+                                        }
+                                    }
+                                }
+                        }
+                        .navigationTransition(
+                            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+                        )
+                    }
+                    .sheet(isPresented: self.$showSettings) {
+                        NavigationStack {
+                            SettingsScreen(store: self.store)
+                                .toolbar {
+                                    ToolbarItem(placement: .cancellationAction) {
+                                        Button("", systemImage: "xmark") {
+                                            self.showSettings = false
+                                        }
+                                    }
+                                }
+                        }
+                        .navigationTransition(
+                            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+                        )
+                    }
+                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
             }
         }
+
     #endif
 
     private func dismissLaunchOverlayIfNeeded() async {

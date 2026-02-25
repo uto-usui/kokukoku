@@ -5,7 +5,6 @@ struct TimerScreen: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     @Bindable var store: TimerStore
-    @State private var secondaryControlsReveal = 0
 
     var body: some View {
         Group {
@@ -106,25 +105,11 @@ struct TimerScreen: View {
                 .tint(.primary)
                 .accessibilityIdentifier("timer.skip")
             }
-            .opacity(self.secondaryControlsReveal > 0 ? 1 : 0)
+            .opacity(self.store.timerState == .paused ? 1 : 0)
+            .animation(.easeInOut(duration: 0.3), value: self.store.timerState)
             .padding(.bottom, 24)
         }
         .frame(maxWidth: 680)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                self.secondaryControlsReveal += 1
-            }
-        }
-        .task(id: self.secondaryControlsReveal) {
-            guard self.secondaryControlsReveal > 0 else { return }
-            try? await Task.sleep(for: .seconds(3))
-            if !Task.isCancelled {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.secondaryControlsReveal = 0
-                }
-            }
-        }
     }
 
     // MARK: - Generative Mode
