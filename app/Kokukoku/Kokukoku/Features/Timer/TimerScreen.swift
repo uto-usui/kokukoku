@@ -9,15 +9,16 @@ struct TimerScreen: View {
         ScrollView {
             VStack(spacing: 24) {
                 self.sessionHeader
+                    .zIndex(1)
                 if self.useGenerativeMode {
                     self.generativeDisplay
+                        .padding(.vertical, -20)
                 } else {
                     self.timerDisplay
                     self.progressDisplay
                 }
                 self.controlButtons
-                self.boundaryStopControls
-                self.statusFooter
+                    .zIndex(1)
             }
             .padding(24)
             .frame(maxWidth: 680)
@@ -74,6 +75,7 @@ struct TimerScreen: View {
                     self.store.performPrimaryAction()
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .tint(self.primaryActionTintColor)
                 .accessibilityIdentifier("timer.primaryAction")
             } else {
@@ -81,6 +83,7 @@ struct TimerScreen: View {
                     self.store.performPrimaryAction()
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.large)
                 .tint(.primary)
                 .accessibilityIdentifier("timer.primaryAction")
             }
@@ -90,6 +93,7 @@ struct TimerScreen: View {
                     self.store.reset()
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
                 .tint(.primary)
                 .disabled(!self.store.canReset)
                 .accessibilityIdentifier("timer.reset")
@@ -98,45 +102,11 @@ struct TimerScreen: View {
                     self.store.skip()
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
                 .tint(.primary)
                 .accessibilityIdentifier("timer.skip")
             }
         }
-    }
-
-    private var boundaryStopControls: some View {
-        VStack(spacing: 10) {
-            Toggle(
-                "Stop at next boundary",
-                isOn: Binding(
-                    get: { self.store.boundaryStopPolicy == .stopAtNextBoundary },
-                    set: { newValue in
-                        self.store.setBoundaryStopPolicy(newValue ? .stopAtNextBoundary : .none)
-                    }
-                )
-            )
-
-            Toggle(
-                "Stop at long break",
-                isOn: Binding(
-                    get: { self.store.boundaryStopPolicy == .stopAtLongBreak },
-                    set: { newValue in
-                        self.store.setBoundaryStopPolicy(newValue ? .stopAtLongBreak : .none)
-                    }
-                )
-            )
-        }
-        .toggleStyle(.switch)
-        .tint(.secondary)
-    }
-
-    private var statusFooter: some View {
-        VStack(spacing: 4) {
-            Text("Auto-start: \(self.store.config.autoStart ? "On" : "Off")")
-            Text("Notifications: \(self.store.effectiveNotificationSoundEnabled ? "Sound" : "Silent")")
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
     }
 
     private var useGenerativeMode: Bool {
@@ -144,17 +114,13 @@ struct TimerScreen: View {
     }
 
     private var generativeDisplay: some View {
-        VStack(spacing: 8) {
-            GenerativeTimerView(
-                elapsed: 0,
-                progress: self.store.progress,
-                sessionType: self.store.sessionType,
-                formattedTime: self.store.formattedRemainingTime
-            )
-            Text(self.store.focusCycleStatusText)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
+        GenerativeTimerView(
+            elapsed: 0,
+            progress: self.store.progress,
+            sessionType: self.store.sessionType,
+            formattedTime: self.store.formattedRemainingTime,
+            cycleStatusText: self.store.focusCycleStatusText
+        )
     }
 
     private var shouldUseColoredPrimaryAction: Bool {

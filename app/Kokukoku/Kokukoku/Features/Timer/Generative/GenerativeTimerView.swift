@@ -11,6 +11,7 @@ struct GenerativeTimerView: View {
     let progress: Double
     let sessionType: SessionType
     let formattedTime: String
+    let cycleStatusText: String
 
     @State private var visualState = VisualState()
     @State private var startDate: Date?
@@ -30,11 +31,16 @@ struct GenerativeTimerView: View {
                 self.visualState.visual.draw(in: &context, input: input)
             }
             .overlay(alignment: .bottom) {
-                Text(self.formattedTime)
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.primary)
-                    .padding(.bottom, 16)
+                VStack(spacing: 4) {
+                    Text(self.formattedTime)
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(.primary)
+                    Text(self.cycleStatusText)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 8)
             }
         }
         .aspectRatio(1, contentMode: .fit)
