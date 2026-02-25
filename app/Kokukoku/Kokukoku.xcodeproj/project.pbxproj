@@ -12,8 +12,8 @@
 		6B193B73DF12E5E7FA8031DD /* KokukokuWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = D5A1C20D5549207B9111CCC4 /* KokukokuWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6D94BFC657909AEA82AC9307 /* KokukokuWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4403978BED95CB29239FA31 /* KokukokuWidgetBundle.swift */; };
 		861CF750956887E2B7870A0A /* KokukokuActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AF7D4ACFB280491340A2F8D /* KokukokuActivityAttributes.swift */; };
-		B0FDDDF2D59075B4136325BB /* KokukokuLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07AC72D7E879B2AF9C5C044 /* KokukokuLiveActivityWidget.swift */; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* KokukokuWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED50032A2E8ABD4D522B44E3 /* KokukokuWatchApp.swift */; };
+		B0FDDDF2D59075B4136325BB /* KokukokuLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07AC72D7E879B2AF9C5C044 /* KokukokuLiveActivityWidget.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E5EAC433E26DD71DFCB3C5 /* WatchSessionStore.swift */; };
 /* End PBXBuildFile section */
 
@@ -165,6 +165,7 @@
 				C3EE8CA22F4DDC6E00522F61 /* Products */,
 				84A30BC9C4D4764D6BB91AFF /* KokukokuWidget */,
 				41D001E5241EC69F634D3FCD /* KokukokuWatch */,
+				C3F77BCC2F4EE6EB006A9E61 /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -178,6 +179,14 @@
 				D5A1C20D5549207B9111CCC4 /* KokukokuWatch.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C3F77BCC2F4EE6EB006A9E61 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				6AF7D4ACFB280491340A2F8D /* KokukokuActivityAttributes.swift */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -381,6 +390,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C3D4E5F6A7B8C9D0E1F2A3B4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* KokukokuWatchApp.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchSessionStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C3EE8C9D2F4DDC6E00522F61 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -402,24 +420,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		C3D4E5F6A7B8C9D0E1F2A3B4 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A1B2C3D4E5F6A7B8C9D0E1F2 /* KokukokuWatchApp.swift in Sources */,
-				B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchSessionStore.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		C4067C511FEF10969B874233 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			platformFilter = ios;
-			target = 3DAD69EFBDEBAA0257C5C10D /* KokukokuWatch */;
-			targetProxy = 9490B10BD2987B771DBEBEE6 /* PBXContainerItemProxy */;
-		};
 		C3EE8CB22F4DDC6F00522F61 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = C3EE8CA02F4DDC6E00522F61 /* Kokukoku */;
@@ -430,6 +433,12 @@
 			target = C3EE8CA02F4DDC6E00522F61 /* Kokukoku */;
 			targetProxy = C3EE8CBB2F4DDC6F00522F61 /* PBXContainerItemProxy */;
 		};
+		C4067C511FEF10969B874233 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = 3DAD69EFBDEBAA0257C5C10D /* KokukokuWatch */;
+			targetProxy = 9490B10BD2987B771DBEBEE6 /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -439,11 +448,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.uto-usui.Kokukoku";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.uto-usui.Kokukoku";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.uto-usui.Kokukoku.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -816,11 +825,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.uto-usui.Kokukoku";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = "com.uto-usui.Kokukoku";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.uto-usui.Kokukoku.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";

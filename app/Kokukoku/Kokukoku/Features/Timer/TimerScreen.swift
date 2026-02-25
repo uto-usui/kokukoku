@@ -9,8 +9,12 @@ struct TimerScreen: View {
         ScrollView {
             VStack(spacing: 24) {
                 self.sessionHeader
-                self.timerDisplay
-                self.progressDisplay
+                if self.useGenerativeMode {
+                    self.generativeDisplay
+                } else {
+                    self.timerDisplay
+                    self.progressDisplay
+                }
                 self.controlButtons
                 self.boundaryStopControls
                 self.statusFooter
@@ -133,6 +137,24 @@ struct TimerScreen: View {
         }
         .font(.footnote)
         .foregroundStyle(.secondary)
+    }
+
+    private var useGenerativeMode: Bool {
+        self.store.config.generativeModeEnabled && !self.accessibilityReduceMotion
+    }
+
+    private var generativeDisplay: some View {
+        VStack(spacing: 8) {
+            GenerativeTimerView(
+                elapsed: 0,
+                progress: self.store.progress,
+                sessionType: self.store.sessionType,
+                formattedTime: self.store.formattedRemainingTime
+            )
+            Text(self.store.focusCycleStatusText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var shouldUseColoredPrimaryAction: Bool {
