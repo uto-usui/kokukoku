@@ -44,16 +44,22 @@ final class WatchConnectivityService: NSObject, WatchSyncServicing {
                 return
             }
 
-            let context: [String: Any] = [
+            let sessionDuration = TimerEngine.duration(for: snapshot.sessionType, config: config)
+            var context: [String: Any] = [
                 Keys.sessionType: snapshot.sessionType.rawValue,
                 Keys.timerState: snapshot.timerState.rawValue,
                 Keys.boundaryStopPolicy: snapshot.boundaryStopPolicy.rawValue,
-                Keys.endDateEpoch: snapshot.endDate?.timeIntervalSince1970 as Any,
-                Keys.pausedRemainingSec: snapshot.pausedRemainingSec as Any,
                 Keys.completedFocusCount: snapshot.completedFocusCount,
                 Keys.longBreakFrequency: config.longBreakFrequency,
-                Keys.serverNowEpoch: now.timeIntervalSince1970
+                Keys.serverNowEpoch: now.timeIntervalSince1970,
+                Keys.sessionDurationSec: sessionDuration
             ]
+            if let endDate = snapshot.endDate {
+                context[Keys.endDateEpoch] = endDate.timeIntervalSince1970
+            }
+            if let pausedSec = snapshot.pausedRemainingSec {
+                context[Keys.pausedRemainingSec] = pausedSec
+            }
 
             do {
                 try WCSession.default.updateApplicationContext(context)
@@ -65,39 +71,39 @@ final class WatchConnectivityService: NSObject, WatchSyncServicing {
 }
 
 #if os(iOS)
-extension WatchConnectivityService: WCSessionDelegate {
-    func session(_: WCSession, activationDidCompleteWith _: WCSessionActivationState, error _: Error?) {}
+    extension WatchConnectivityService: WCSessionDelegate {
+        func session(_: WCSession, activationDidCompleteWith _: WCSessionActivationState, error _: Error?) {}
 
-    func sessionDidBecomeInactive(_: WCSession) {}
+        func sessionDidBecomeInactive(_: WCSession) {}
 
-    func sessionDidDeactivate(_ session: WCSession) {
-        session.activate()
-    }
-
-    func session(_: WCSession, didReceiveMessage message: [String: Any]) {
-        self.handle(message: message)
-    }
-
-    func session(_: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        self.handle(message: applicationContext)
-    }
-
-    private func handle(message: [String: Any]) {
-        guard let rawCommand = message[Keys.command] as? String,
-              let command = WatchTimerCommand(rawValue: rawCommand)
-        else {
-            return
+        func sessionDidDeactivate(_ session: WCSession) {
+            session.activate()
         }
 
-        guard let commandHandler = self.commandHandler else {
-            return
+        func session(_: WCSession, didReceiveMessage message: [String: Any]) {
+            self.handle(message: message)
         }
 
-        Task { @MainActor in
-            commandHandler(command)
+        func session(_: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+            self.handle(message: applicationContext)
+        }
+
+        private func handle(message: [String: Any]) {
+            guard let rawCommand = message[Keys.command] as? String,
+                  let command = WatchTimerCommand(rawValue: rawCommand)
+            else {
+                return
+            }
+
+            guard let commandHandler = self.commandHandler else {
+                return
+            }
+
+            Task { @MainActor in
+                commandHandler(command)
+            }
         }
     }
-}
 #endif
 
 private enum Keys {
@@ -110,4 +116,5 @@ private enum Keys {
     static let completedFocusCount = "completedFocusCount"
     static let longBreakFrequency = "longBreakFrequency"
     static let serverNowEpoch = "serverNowEpoch"
+    static let sessionDurationSec = "sessionDurationSec"
 }

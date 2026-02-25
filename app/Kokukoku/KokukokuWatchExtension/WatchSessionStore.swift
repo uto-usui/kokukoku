@@ -12,6 +12,7 @@ final class WatchSessionStore: NSObject {
     var pausedRemainingSec: Int?
     var completedFocusCount: Int = 0
     var longBreakFrequency: Int = 4
+    var sessionDurationSec: Int = 25 * 60
     var now: Date = .init()
     var isReachable: Bool = false
     var lastErrorMessage: String?
@@ -26,7 +27,7 @@ final class WatchSessionStore: NSObject {
         case .paused:
             return max(0, self.pausedRemainingSec ?? 0)
         case .idle:
-            return max(0, self.pausedRemainingSec ?? 0)
+            return max(0, self.pausedRemainingSec ?? self.sessionDurationSec)
         }
     }
 
@@ -148,6 +149,9 @@ final class WatchSessionStore: NSObject {
         self.pausedRemainingSec = context[Keys.pausedRemainingSec] as? Int
         self.completedFocusCount = context[Keys.completedFocusCount] as? Int ?? 0
         self.longBreakFrequency = context[Keys.longBreakFrequency] as? Int ?? 4
+        if let duration = context[Keys.sessionDurationSec] as? Int {
+            self.sessionDurationSec = duration
+        }
 
         if let serverNowEpoch = context[Keys.serverNowEpoch] as? Double {
             self.now = Date(timeIntervalSince1970: serverNowEpoch)
@@ -156,7 +160,11 @@ final class WatchSessionStore: NSObject {
 }
 
 extension WatchSessionStore: WCSessionDelegate {
-    nonisolated func session(_: WCSession, activationDidCompleteWith _: WCSessionActivationState, error _: (any Error)?) {}
+    nonisolated func session(
+        _: WCSession,
+        activationDidCompleteWith _: WCSessionActivationState,
+        error _: (any Error)?
+    ) {}
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in
@@ -181,6 +189,7 @@ private enum Keys {
     static let completedFocusCount = "completedFocusCount"
     static let longBreakFrequency = "longBreakFrequency"
     static let serverNowEpoch = "serverNowEpoch"
+    static let sessionDurationSec = "sessionDurationSec"
 }
 
 enum WatchTimerCommand: String {
