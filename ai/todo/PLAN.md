@@ -54,7 +54,8 @@
   - Monospaced digits for timer (`.monospacedDigit()`)
 - Color policy:
   - Use semantic colors (`primary`, `secondary`, `background`) first
-  - Add minimal accent tokens for session state (`focus`, `shortBreak`, `longBreak`)
+  - Keep timer/session UI monochrome; reserve strong accent mainly for primary action
+  - Allow saturated color only on primary action (`Start` / `Resume` share tone, `Pause` may differ)
 - Navigation structure:
   - iOS: `NavigationStack`
   - macOS: `NavigationSplitView` (timer + history/settings access)

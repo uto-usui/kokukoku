@@ -9,7 +9,8 @@
   - [x] Timer typography (`monospacedDigit`)
 - [x] Lock styling rules:
   - [x] Semantic color-first policy
-  - [x] Session accent tokens (focus/shortBreak/longBreak)
+  - [x] Timer/session UIはモノトーン運用（強い色はprimary action中心）
+  - [x] 有彩色はprimary actionに限定（Start/Resume同色、Pauseは別色可）
 - [x] Lock notification default: `Sound ON` with optional `Silent`.
 
 ## M1. Domain and Timer Engine
@@ -67,18 +68,40 @@
 
 ## M6. Polish and Quality
 - [x] Improve accessibility labels and dynamic type behavior.
-- [ ] Respect Reduce Motion / contrast settings.
-- [ ] Add basic app icons + launch polish.
+- [x] Respect Reduce Motion / contrast settings.
+- [x] Add basic app icons + launch polish.
 - [x] Add tests for:
   - [x] endDate restore
   - [x] long-break cycle count
 - [x] Final validation:
   - [x] `make lint`
   - [x] `make test-macos`
-- [ ] Pass all checks in `RELEASE_CHECKLIST.md`.
+- [x] Pass all checks in `RELEASE_CHECKLIST.md`.
 
 ## Phase 2 Backlog (Not in MVP)
-- [ ] MenuBarExtra (macOS)
-- [ ] Widget / Live Activity (iOS)
-- [ ] Apple Watch companion
-- [ ] Focus mode integration
+- [x] MenuBarExtra (macOS)
+- [x] Widget / Live Activity (iOS)
+- [x] Apple Watch companion
+- [x] Focus mode integration
+
+## P2-Fix. Watch / Widget ターゲット構成修正
+
+設計: `docs/plans/2026-02-25-watch-widget-target-fix-design.md`
+実装計画: `docs/plans/2026-02-25-watch-widget-target-fix.md`
+
+- [x] Task 1: KokukokuWatchExtension ターゲットを pbxproj から完全削除
+- [x] Task 2: KokukokuWatch を modern 単一ターゲット (product-type: application) に変換
+- [x] Task 3: Widget の Info.plist 修正（GENERATE + 手動 plist マージ方式）
+- [x] Task 4: ActivityAttributes の重複解消（共有ソース1本化）
+- [-] Task 5: スキーム更新 → 不要（暗黙的依存でビルドされる）
+- [x] Task 6: 全検証ゲート通過
+  - [x] `make build-macos` 成功
+  - [x] `make test-macos` 全パス (22/22)
+  - [x] `build_sim` (iOS Simulator) 成功
+  - [x] `test_sim -only-testing:KokukokuTests` 全パス (22/22)
+  - [x] `simctl launch` でアプリ起動確認
+
+## Phase 2 Verification (Manual)
+- [ ] iPhone + Apple Watch のペアシミュレータで `Kokukoku` を起動する
+- [ ] iPhoneでタイマー開始/一時停止/再開したとき、Watchの残り時間と状態が追従する
+- [ ] Watchの `Start/Pause/Reset/Skip` 操作がiPhone側のタイマーに反映される
