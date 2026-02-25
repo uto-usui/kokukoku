@@ -106,24 +106,21 @@ Device: iPhone 17 Pro (iOS 26.2 Simulator)
 
 ## Issues
 
-### P3: Progress bar missing accessibilityLabel
-- The `ProgressView` has no `AXLabel`. VoiceOver users cannot identify what the bar represents.
-- **Suggested fix**: Add `.accessibilityLabel("Timer progress")` to the ProgressView in TimerScreen.swift.
+### P3: Progress bar missing accessibilityLabel — FIXED
+- ~~The `ProgressView` has no `AXLabel`. VoiceOver users cannot identify what the bar represents.~~
+- **Fix applied**: Added `.accessibilityLabel("Timer progress")` to ProgressView in TimerScreen.swift.
 
-### P4: Break icon AXLabel uses SF Symbol name
-- Short Break icon's AXLabel is raw SF Symbol name "cup.and.saucer" instead of a human-readable label like "Break".
-- VoiceOver will read "cup and saucer" which is confusing.
-- **Suggested fix**: Add `.accessibilityLabel("Break")` to the break session icon in TimerScreen.swift.
+### P4: Break icon AXLabel uses SF Symbol name — FIXED
+- ~~Short Break icon's AXLabel is raw SF Symbol name "cup.and.saucer" instead of a human-readable label like "Break".~~
+- **Fix applied**: Icon set to `accessibilityHidden(true)`, HStack wrapped with `accessibilityElement(children: .combine)`. VoiceOver reads "Short Break" text only.
 
-### P4: Long Break icon AXLabel is "Clear Night"
-- Long Break uses moon.stars SF Symbol, AXLabel auto-generated as "Clear Night".
-- Not semantically meaningful for a break session.
-- **Suggested fix**: Add `.accessibilityLabel("Long Break")` to the long break session icon.
+### P4: Long Break icon AXLabel is "Clear Night" — FIXED
+- ~~Long Break uses moon.stars SF Symbol, AXLabel auto-generated as "Clear Night".~~
+- **Fix applied**: Same approach as Short Break. VoiceOver reads "Long Break" text only.
 
-### P5: iOS 26 Liquid Glass toolbar items not in accessibility tree
-- Navigation bar toolbar items (History/Settings icons) are not exposed as individual elements in the accessibility tree.
-- They can only be tapped by coordinates, not by label or ID.
-- This may affect UI test automation; consider adding explicit `accessibilityIdentifier` to toolbar NavigationLinks.
+### P5: iOS 26 Liquid Glass toolbar items not in accessibility tree — FIXED
+- ~~Navigation bar toolbar items (History/Settings icons) are not exposed as individual elements in the accessibility tree.~~
+- **Fix applied**: Added `accessibilityLabel` + `accessibilityIdentifier` to toolbar NavigationLinks in ContentView.swift.
 
 ## Summary
 
@@ -140,4 +137,4 @@ Device: iPhone 17 Pro (iOS 26.2 Simulator)
 | 9 | Full cycle → Long Break | PASS |
 | 10 | History filters (All/Focus/Breaks) | PASS |
 
-**Overall: 10/10 flows passed. 4 minor accessibility issues identified (P3-P5).**
+**Overall: 10/10 flows passed. 4 minor accessibility issues identified (P3-P5) — all fixed.**
