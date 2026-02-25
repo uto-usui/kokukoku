@@ -10,10 +10,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - XcodeBuildMCP integration for structured build/test workflow
 - SwiftFormat auto-apply hook on file edit
 - Claude Code onboarding guide (CLAUDE.md)
+- Material surface texture (grain overlay) and vibrant typography via `.ultraThinMaterial`
+- Generative mode (pulse animation) as alternative timer display
+- Ambient noise (pink noise) during focus sessions
+- Haptic feedback on session transitions
+- System Focus Mode integration (mute sounds when Focus active)
+- Consolidated `...` menu in toolbar (Sound toggle, History, Settings)
+- Sheet presentation for History and Settings with zoom transition
 
 ### Changed
 - Skip now advances cycle count; Reset clears cycle to initial state
 - Paused state preserved when skipping sessions
+- Timer digits: 100pt thin weight, vibrant over material background
+- Primary button: glass capsule (`Capsule().fill(.tertiary)`)
+- Toolbar: 2 icons (clock, gear) replaced with single ellipsis menu
+- Reset/Skip visible only when paused (previously tap-to-reveal)
+- Navigation bar glass background hidden on timer screen
 
 ### Fixed
 - Timer display now refreshes every second while running
