@@ -27,11 +27,11 @@ enum SessionType: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .focus:
-            "Focus"
+            String(localized: "Focus")
         case .shortBreak:
-            "Short Break"
+            String(localized: "Short Break")
         case .longBreak:
-            "Long Break"
+            String(localized: "Long Break")
         }
     }
 
@@ -68,11 +68,11 @@ enum BoundaryStopPolicy: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .none:
-            "No Boundary Stop"
+            String(localized: "No Boundary Stop")
         case .stopAtNextBoundary:
-            "Stop at Next Boundary"
+            String(localized: "Stop at Next Boundary")
         case .stopAtLongBreak:
-            "Stop at Long Break"
+            String(localized: "Stop at Long Break")
         }
     }
 }

@@ -13,11 +13,11 @@ private enum MacSidebarItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .timer:
-            "Timer"
+            String(localized: "Timer")
         case .history:
-            "History"
+            String(localized: "History")
         case .settings:
-            "Settings"
+            String(localized: "Settings")
         }
     }
 
@@ -83,7 +83,7 @@ struct ContentView: View {
                     Label(item.title, systemImage: item.symbolName)
                         .tag(item)
                 }
-                .navigationTitle("Kokukoku")
+                .navigationTitle(Text(verbatim: "Kokukoku"))
                 .listStyle(.sidebar)
                 .frame(minWidth: 200)
             } detail: {
@@ -222,7 +222,7 @@ private struct LaunchOverlayView: View {
                     .font(.system(size: 44, weight: .semibold))
                     .foregroundStyle(.primary)
 
-                Text("Kokukoku")
+                Text(verbatim: "Kokukoku")
                     .font(.title3.weight(.semibold))
 
                 Text("Pomodoro Timer")

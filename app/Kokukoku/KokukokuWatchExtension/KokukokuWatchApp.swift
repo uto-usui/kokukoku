@@ -53,7 +53,7 @@ struct WatchTimerScreen: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
-                Text(self.store.isReachable ? "Connected" : "Waiting for iPhone")
+                Text(self.store.isReachable ? String(localized: "Connected") : String(localized: "Waiting for iPhone"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 

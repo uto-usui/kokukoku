@@ -78,11 +78,11 @@ import SwiftUI
         private var timerStateText: String {
             switch self.store.timerState {
             case .idle:
-                "Idle"
+                String(localized: "Idle")
             case .running:
-                "Running"
+                String(localized: "Running")
             case .paused:
-                "Paused"
+                String(localized: "Paused")
             }
         }
     }

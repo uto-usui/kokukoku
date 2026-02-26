@@ -36,7 +36,7 @@ extension TimerStore {
             self.preferences = defaults
             self.applyPreferences(defaults)
         } catch {
-            self.lastErrorMessage = "Failed to load preferences: \(error.localizedDescription)"
+            self.lastErrorMessage = String(localized: "Failed to load preferences: \(error.localizedDescription)")
         }
     }
 
@@ -86,7 +86,7 @@ extension TimerStore {
         do {
             try modelContext.save()
         } catch {
-            self.lastErrorMessage = "Failed to save preferences: \(error.localizedDescription)"
+            self.lastErrorMessage = String(localized: "Failed to save preferences: \(error.localizedDescription)")
         }
     }
 
@@ -110,7 +110,7 @@ extension TimerStore {
         do {
             try modelContext.save()
         } catch {
-            self.lastErrorMessage = "Failed to save session record: \(error.localizedDescription)"
+            self.lastErrorMessage = String(localized: "Failed to save session record: \(error.localizedDescription)")
         }
     }
 }

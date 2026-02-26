@@ -75,7 +75,7 @@ final class NotificationService: NotificationServicing {
         self.cancelSessionEndNotification()
 
         let content = UNMutableNotificationContent()
-        content.title = "\(sessionType.title) completed"
+        content.title = self.notificationTitle(for: sessionType)
         content.body = self.nextActionText(after: sessionType)
         content.sound = soundEnabled ? .default : nil
 
@@ -100,9 +100,20 @@ final class NotificationService: NotificationServicing {
     private func nextActionText(after sessionType: SessionType) -> String {
         switch sessionType {
         case .focus:
-            "Time for a break."
+            String(localized: "Time for a break.")
         case .shortBreak, .longBreak:
-            "Time to focus."
+            String(localized: "Time to focus.")
+        }
+    }
+
+    private func notificationTitle(for sessionType: SessionType) -> String {
+        switch sessionType {
+        case .focus:
+            String(localized: "Focus completed")
+        case .shortBreak:
+            String(localized: "Short Break completed")
+        case .longBreak:
+            String(localized: "Long Break completed")
         }
     }
 }

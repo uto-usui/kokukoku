@@ -26,11 +26,11 @@ private struct KokukokuStatusEntryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Kokukoku")
+            Text(verbatim: "Kokukoku")
                 .font(.headline)
             Text("Focus 25:00")
                 .font(.title3.monospacedDigit().weight(.semibold))
-            Text(entry.date, style: .time)
+            Text(self.entry.date, style: .time)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

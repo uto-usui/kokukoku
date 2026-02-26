@@ -1,4 +1,5 @@
 import ActivityKit
+import Foundation
 import SwiftUI
 import WidgetKit
 
@@ -62,11 +63,11 @@ struct KokukokuLiveActivityWidget: Widget {
     private func timerStateText(from rawValue: String) -> String {
         switch rawValue {
         case "running":
-            "Running"
+            String(localized: "Running")
         case "paused":
-            "Paused"
+            String(localized: "Paused")
         default:
-            "Idle"
+            String(localized: "Idle")
         }
     }
 }

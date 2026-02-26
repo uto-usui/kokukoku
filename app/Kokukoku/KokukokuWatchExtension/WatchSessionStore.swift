@@ -5,9 +5,9 @@ import WatchConnectivity
 @MainActor
 @Observable
 final class WatchSessionStore: NSObject {
-    var sessionTypeTitle: String = "Focus"
+    var sessionTypeTitle: String = .init(localized: "Focus")
     var timerState: WatchTimerState = .idle
-    var boundaryStopPolicyTitle: String = "No Boundary Stop"
+    var boundaryStopPolicyTitle: String = .init(localized: "No Boundary Stop")
     var endDate: Date?
     var pausedRemainingSec: Int?
     var completedFocusCount: Int = 0
@@ -39,17 +39,17 @@ final class WatchSessionStore: NSObject {
     var primaryActionTitle: String {
         switch self.timerState {
         case .idle:
-            "Start"
+            String(localized: "Start")
         case .running:
-            "Pause"
+            String(localized: "Pause")
         case .paused:
-            "Resume"
+            String(localized: "Resume")
         }
     }
 
     var cycleText: String {
         let frequency = max(1, self.longBreakFrequency)
-        return "Cycle: \(self.completedFocusCount % frequency)/\(frequency)"
+        return String(localized: "Cycle: \(self.completedFocusCount % frequency)/\(frequency)")
     }
 
     func bind() {
@@ -212,11 +212,11 @@ private enum SessionType: String {
     var title: String {
         switch self {
         case .focus:
-            "Focus"
+            String(localized: "Focus")
         case .shortBreak:
-            "Short Break"
+            String(localized: "Short Break")
         case .longBreak:
-            "Long Break"
+            String(localized: "Long Break")
         }
     }
 }
@@ -229,11 +229,11 @@ private enum WatchBoundaryStopPolicy: String {
     var title: String {
         switch self {
         case .none:
-            "No Boundary Stop"
+            String(localized: "No Boundary Stop")
         case .stopAtNextBoundary:
-            "Stop at Next Boundary"
+            String(localized: "Stop at Next Boundary")
         case .stopAtLongBreak:
-            "Stop at Long Break"
+            String(localized: "Stop at Long Break")
         }
     }
 }

@@ -127,17 +127,17 @@ final class TimerStore {
 
     var focusCycleStatusText: String {
         let frequency = max(1, self.config.longBreakFrequency)
-        return "Cycle: \(self.snapshot.completedFocusCount % frequency)/\(frequency)"
+        return String(localized: "Cycle: \(self.snapshot.completedFocusCount % frequency)/\(frequency)")
     }
 
     var primaryActionTitle: String {
         switch self.snapshot.timerState {
         case .idle:
-            "Start"
+            String(localized: "Start")
         case .running:
-            "Pause"
+            String(localized: "Pause")
         case .paused:
-            "Resume"
+            String(localized: "Resume")
         }
     }
 

@@ -1,13 +1,23 @@
+import Foundation
 import SwiftData
 import SwiftUI
 
 private enum HistoryFilter: String, CaseIterable, Identifiable {
-    case all = "All"
-    case focus = "Focus"
-    case breaks = "Breaks"
+    case all, focus, breaks
 
     var id: String {
         self.rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .all:
+            String(localized: "All")
+        case .focus:
+            String(localized: "Focus")
+        case .breaks:
+            String(localized: "Breaks")
+        }
     }
 }
 
@@ -30,7 +40,7 @@ struct HistoryScreen: View {
             ToolbarItem(placement: .principal) {
                 Picker("Filter", selection: self.$filter) {
                     ForEach(HistoryFilter.allCases) { filter in
-                        Text(filter.rawValue).tag(filter)
+                        Text(filter.title).tag(filter)
                     }
                 }
                 #if os(iOS)

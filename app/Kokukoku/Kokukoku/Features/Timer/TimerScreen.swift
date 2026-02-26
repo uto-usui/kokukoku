@@ -27,12 +27,12 @@ struct TimerScreen: View {
                         .ignoresSafeArea()
                 }
             }
-            .navigationTitle("Kokukoku")
+            .navigationTitle(Text(verbatim: "Kokukoku"))
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("Kokukoku")
+                    Text(verbatim: "Kokukoku")
                         .foregroundStyle(.tertiary)
                         .opacity(self.store.timerState == .running ? 0 : 1)
                         .animation(.easeInOut(duration: 0.3), value: self.store.timerState)
@@ -67,7 +67,7 @@ struct TimerScreen: View {
                 .monospacedDigit()
                 .contentTransition(.numericText(countsDown: true))
                 .foregroundStyle(.primary)
-                .accessibilityLabel("Remaining time \(self.store.formattedRemainingTime)")
+                .accessibilityLabel(Text("Remaining time \(self.store.formattedRemainingTime)"))
                 .accessibilityIdentifier("timer.remaining")
 
             Text(self.store.focusCycleStatusText)
