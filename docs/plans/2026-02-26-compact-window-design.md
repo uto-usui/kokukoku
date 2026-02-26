@@ -8,13 +8,30 @@ The current macOS layout uses `NavigationSplitView` with a sidebar (Timer / Hist
 
 ## Approach: Unified Single-Column Layout
 
-Replace the macOS `NavigationSplitView` with the same `NavigationStack` + sheet pattern already used on iOS. The macOS window becomes a single-column timer view with History and Settings accessible via sheets from the `...` menu — identical to the iPhone experience.
+Replace the macOS `NavigationSplitView` with `NavigationStack` + sheet pattern. The macOS window becomes a single-column timer view with History and Settings accessible via sheets from the `...` menu — matching the iPhone experience visually.
+
+**Visual parity is the requirement, not code identity.** Both platforms should present the same timer-first single-column layout with sheets for secondary screens. Platform-specific API differences are handled with `#if os()` guards where needed.
 
 **Why this approach:**
 - Eliminates ~40 lines of macOS-specific layout code (`MacSidebarItem` enum, `NavigationSplitView`, `macLayout`)
-- Unifies the interaction model across platforms (timer-first, sheets for secondary screens)
+- Unifies the visual experience across platforms (timer-first, sheets for secondary screens)
 - MenuBarExtra already provides quick access to controls — the main window doesn't need persistent navigation
 - Matches the design language established in the Control Hierarchy Redesign
+
+## Platform API Compatibility
+
+The iOS layout uses several APIs that require platform-specific handling:
+
+| API | macOS | Strategy |
+|-----|-------|----------|
+| `ToolbarItemPlacement.topBarTrailing` | Available (maps to window toolbar trailing) | Share |
+| `.matchedTransitionSource(id:in:)` | **Unavailable** | `#if os(iOS)` guard |
+| `.navigationTransition(.zoom(...))` | **Unavailable** | `#if os(iOS)` guard |
+| `.toolbarBackgroundVisibility(.hidden, for:)` | Available but different placement arg | `#if os()` — `.windowToolbar` vs `.navigationBar` |
+| `.navigationBarTitleDisplayMode(.inline)` | **Unavailable** (iOS only) | `#if os(iOS)` guard |
+| `ToolbarItem(placement: .cancellationAction)` | Available | Share |
+
+**Key insight:** The zoom transition (`matchedTransitionSource` / `navigationTransition(.zoom)`) is unavailable on macOS. macOS sheets use the standard slide-down-from-titlebar animation instead. This is acceptable — macOS users expect native sheet behavior, not iOS-style zoom transitions. The visual parity goal is about layout and content, not transition animations.
 
 ## Window Configuration
 
@@ -24,37 +41,22 @@ Replace the macOS `NavigationSplitView` with the same `NavigationStack` + sheet 
 | Min size | 380 × 640 | Prevent shrinking below usable size |
 | Resizable | Yes (vertical only) | Allow stretching for Settings sheet content |
 | Title bar | Standard | Keep native title bar for window management (drag, close, minimize) |
-| Fullscreen | Disabled | Pomodoro timer should not go fullscreen — use `.windowStyle(.hiddenTitleBar)` is NOT used; instead disable via window delegate or accept system default |
+| Fullscreen | System default | Accept macOS default; users are unlikely to fullscreen a 380pt timer |
 | Multiple windows | Prevented | Single window enforced via `Window` scene instead of `WindowGroup` |
 
 ### Why `Window` instead of `WindowGroup`
 
-`WindowGroup` allows macOS users to create multiple windows (⌘N). A Pomodoro timer should only have one main window — multiple windows sharing the same `TimerStore` would be confusing and serve no purpose. `Window` enforces single-instance semantics and disables the "New Window" menu item.
-
-```swift
-#if os(macOS)
-Window("Kokukoku", id: "main") {
-    ContentView(store: self.store)
-}
-.defaultSize(width: 380, height: 640)
-.windowResizability(.contentMinSize)
-#else
-WindowGroup {
-    ContentView(store: self.store)
-}
-#endif
-```
-
-Note: `Window` is macOS-only. iOS continues to use `WindowGroup`.
+`WindowGroup` allows macOS users to create multiple windows (⌘N). A Pomodoro timer should only have one main window — multiple windows sharing the same `TimerStore` would be confusing. `Window` enforces single-instance semantics and disables "New Window."
 
 ### ⌘, (Settings) Integration
 
-macOS users expect `⌘,` to open Settings. Add a `Settings` scene or use `.commands` to wire ⌘, to the existing Settings sheet:
+macOS users expect `⌘,` to open Settings. Add a `Settings` scene:
 
 ```swift
 #if os(macOS)
 Settings {
     SettingsScreen(store: self.store)
+        .modelContainer(self.sharedModelContainer)
 }
 #endif
 ```
@@ -99,49 +101,45 @@ This provides the standard macOS Settings path alongside the `...` menu.
 
 The `MacSidebarItem` enum in `ContentView.swift` (lines 4–34) is only used by the sidebar layout. Delete entirely.
 
-### 2. Unify `ContentView.body`
+Note: The localized strings "Timer", "History", "Settings" in `Localizable.xcstrings` should be kept — "History" and "Settings" are still used by the `...` menu and sheet titles.
 
-Remove the `#if os(macOS)` / `#else` split. Use the iOS layout (`NavigationStack` + sheets + `...` menu) for both platforms, with platform-specific toolbar adjustments:
+### 2. Restructure `ContentView.body`
+
+Replace the `#if os(macOS)` macLayout / `#else` iosLayout split with a shared `NavigationStack` structure. Platform differences are isolated to small `#if os()` blocks for specific modifiers.
 
 ```swift
 struct ContentView: View {
-    // ... existing @Environment properties ...
-    @Namespace private var sheetTransition
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var showHistory = false
     @State private var showSettings = false
     @Bindable var store: TimerStore
+
+    // Zoom transition namespace — iOS only, but declared on both platforms
+    // to keep the @Namespace in scope for conditional usage.
+    @Namespace private var sheetTransition
+    @State private var hasDismissedLaunchOverlay = false
 
     var body: some View {
         NavigationStack {
             TimerScreen(store: self.store)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Toggle(isOn: /* ambientNoise binding */) {
-                                Label("Sound", systemImage: "speaker.wave.2")
-                            }
-                            Button { self.showHistory = true } label: {
-                                Label("History", systemImage: "clock.arrow.circlepath")
-                            }
-                            Button { self.showSettings = true } label: {
-                                Label("Settings\u{2026}", systemImage: "gearshape")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.primary)
-                        .matchedTransitionSource(id: "systemMenu", in: self.sheetTransition)
-                        .accessibilityLabel("Menu")
-                        .accessibilityIdentifier("nav.system")
+                        self.ellipsisMenu
                     }
                 }
-                .sheet(isPresented: self.$showHistory) { /* HistoryScreen in NavigationStack */ }
-                .sheet(isPresented: self.$showSettings) { /* SettingsScreen in NavigationStack */ }
+                .sheet(isPresented: self.$showHistory) {
+                    self.historySheet
+                }
+                .sheet(isPresented: self.$showSettings) {
+                    self.settingsSheet
+                }
                 #if os(macOS)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                 #else
-                .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
                 #endif
         }
@@ -151,10 +149,79 @@ struct ContentView: View {
             self.store.handleScenePhaseChange(newPhase)
         }
     }
+
+    private var ellipsisMenu: some View {
+        Menu {
+            Toggle(
+                isOn: Binding(
+                    get: { self.store.config.ambientNoiseEnabled },
+                    set: { self.store.updateAmbientNoiseEnabled($0) }
+                )
+            ) {
+                Label("Sound", systemImage: "speaker.wave.2")
+            }
+            Button { self.showHistory = true } label: {
+                Label("History", systemImage: "clock.arrow.circlepath")
+            }
+            Button { self.showSettings = true } label: {
+                Label("Settings\u{2026}", systemImage: "gearshape")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        #if os(iOS)
+        .matchedTransitionSource(id: "systemMenu", in: self.sheetTransition)
+        #endif
+        .accessibilityLabel("Menu")
+        .accessibilityIdentifier("nav.system")
+    }
+
+    private var historySheet: some View {
+        NavigationStack {
+            HistoryScreen()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("", systemImage: "xmark") {
+                            self.showHistory = false
+                        }
+                    }
+                }
+        }
+        #if os(iOS)
+        .navigationTransition(
+            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+        )
+        #endif
+    }
+
+    private var settingsSheet: some View {
+        NavigationStack {
+            SettingsScreen(store: self.store)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("", systemImage: "xmark") {
+                            self.showSettings = false
+                        }
+                    }
+                }
+        }
+        #if os(iOS)
+        .navigationTransition(
+            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+        )
+        #endif
+    }
 }
 ```
 
-The only `#if os()` remaining is for `.toolbarBackgroundVisibility` (different bar type per platform) and `.navigationBarTitleDisplayMode` (iOS-only API).
+**Platform-specific blocks (3 total):**
+1. `.toolbarBackgroundVisibility` — different bar type (`.windowToolbar` vs `.navigationBar`)
+2. `.matchedTransitionSource` — iOS-only zoom transition source
+3. `.navigationTransition(.zoom)` on sheets — iOS-only zoom effect
+
+macOS sheets use the standard macOS sheet animation (slide from titlebar), which is the expected native behavior.
 
 ### 3. Update `KokukokuApp.swift`
 
@@ -185,17 +252,32 @@ var body: some Scene {
 }
 ```
 
+**Changes from current code:**
+- `WindowGroup(id: "main")` → `Window("Kokukoku", id: "main")` (single instance)
+- Add `.defaultSize(width: 380, height: 640)`
+- Add `.windowResizability(.contentMinSize)` (window can grow but not shrink below content size)
+- Add `Settings` scene for ⌘,
+
 ### 4. MenuBarExtra remains unchanged
 
 The MenuBarExtra (280pt wide popover) already works well as a compact quick-access panel. Its `openWindow(id: "main")` call works with both `Window` and `WindowGroup`.
+
+### 5. Update `CLAUDE.md`
+
+Update Architecture section: change `ContentView.swift` description from "Platform-conditional navigation (NavigationStack iOS / NavigationSplitView macOS)" to "Unified NavigationStack with sheet-based secondary screens".
+
+### 6. Cleanup: Remove "Timer" from `Localizable.xcstrings`
+
+The string `"Timer"` in the app's `Localizable.xcstrings` was only used by `MacSidebarItem.timer.title`. After deleting the enum, this translation is unused. Remove it to keep the string catalog clean.
 
 ## File Changes Summary
 
 | File | Change |
 |------|--------|
-| `ContentView.swift` | Delete `MacSidebarItem` enum + `macLayout` + `selectedSidebarItem`. Merge `iosLayout` into `body` with platform-specific toolbar modifiers. |
+| `ContentView.swift` | Delete `MacSidebarItem` enum + `macLayout` + `selectedSidebarItem`. Restructure body with shared `NavigationStack` and 3 small `#if os()` blocks for platform-specific modifiers. |
 | `KokukokuApp.swift` | macOS: `Window` instead of `WindowGroup`, add `.defaultSize()`, `.windowResizability()`, add `Settings` scene. iOS: unchanged `WindowGroup`. |
-| `CLAUDE.md` | Update Architecture section: remove `NavigationSplitView` reference |
+| `CLAUDE.md` | Update Architecture section description for `ContentView.swift`. |
+| `Localizable.xcstrings` | Remove unused "Timer" / "タイマー" entry. |
 
 ## macOS-Specific Behavior
 
@@ -205,20 +287,24 @@ When the user clicks the Dock icon with the window closed, macOS automatically r
 
 ### Fullscreen
 
-`Window` with `.windowResizability(.contentMinSize)` still shows the green fullscreen button. To disable fullscreen for this utility app, the window can be marked with `NSWindow.StyleMask` adjustments if needed — but this requires AppKit bridging. For initial release, accept the system default (fullscreen allowed but not optimized). Users are unlikely to fullscreen a 380pt timer.
+`Window` with `.windowResizability(.contentMinSize)` still shows the green fullscreen button. For initial release, accept the system default. Users are unlikely to fullscreen a 380pt timer.
 
 ### Menu bar behavior
 
 With `Window`, the "New Window" menu item (⌘N) is automatically disabled. The "File" menu may need hiding via `.commands { CommandGroup(replacing: .newItem) {} }` if it appears empty.
 
+### Sheet animation
+
+macOS sheets use the standard slide-from-titlebar animation (no zoom transition). This is the expected native macOS behavior and requires no special handling.
+
 ## Testing
 
 - Build and launch on macOS: verify window appears at ~380×640
-- Verify window can stretch vertically but not shrink below 380×640
+- Verify window cannot shrink below 380×640
 - Verify `...` menu opens History and Settings as sheets
 - Verify ⌘, opens Settings in the standard macOS Settings window
 - Verify MenuBarExtra "Open Kokukoku" still works
 - Verify Dock click reopens the window after closing
 - Verify ⌘N does NOT create a second window
-- Verify iOS layout is unchanged (still uses `WindowGroup`)
+- Verify iOS layout is unchanged (sheets still use zoom transition)
 - Run `make ci` to confirm no regressions
