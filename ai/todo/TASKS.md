@@ -262,7 +262,17 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 - [x] 手動検証（ウィンドウサイズ、⌘,、⌘N無効化、Dock クリック）
 - [x] CI 全パス
 
+## Test Expansion
+
+設計: `docs/plans/2026-02-26-test-expansion.md`
+レビュー: `docs/plans/2026-02-26-test-strategy-review.md`
+
+- [ ] Task 1: TimerEngine エッジケーステスト（progress 境界値、remainingSeconds nil/過去、shouldStopAtBoundary skip 分岐）
+- [ ] Task 2: TimerStore ガード & 設定変更テスト（pause/resume no-op、skip from idle、configChange clamp、multi-boundary 復元）
+- [ ] Task 3: Persistence インテグレーションテスト（デフォルト作成、フルフィールドラウンドトリップ、min-value 補正）
+- [ ] Task 4: TimerStore + NotificationService インテグレーションテスト（start→pause→resume→auto-transition の schedule/cancel 連携）
+- [ ] Task 5: Watch コマンドテスト（handleWatchCommand 3コマンド、WatchSyncServiceSpy、sync 呼び出し検証）
+
 ## Backlog（リリース後）
 
-- [ ] テスト拡充: NotificationService / FocusModeService / loadPreferencesIfNeeded
 - [ ] iOS UI テスト追加（macOS は 2件あるが iOS は 0件）
