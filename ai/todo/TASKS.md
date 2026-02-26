@@ -222,3 +222,25 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 - [x] セクション順: Durations → Behavior → Ambient Noise → Notifications（日常調整先、システム連携後）
 - [x] Notifications 内順序: Notification Sound → Allow Focus Access → Mute in Focus（権限付与→挙動の順）
 - [x] Build 検証（macOS + iOS テスト全パス）
+
+## Lint Cleanup
+
+- [x] SwiftLint 違反 8件修正（変数名、関数分割、file_length disable）
+- [x] `make ci` 全パス（lint + test-macos 44/44 + build-ios）
+
+## Release 0.2.0
+
+手順ガイド: [`docs/RELEASE_GUIDE.md`](../docs/RELEASE_GUIDE.md)
+
+- [ ] CHANGELOG バージョンカット（`[Unreleased]` → `[0.2.0]`）
+- [ ] Xcode アーカイブ & App Store Connect アップロード
+- [ ] App Store Connect メタデータ設定（スクリーンショット、説明文、価格）
+- [ ] TestFlight 内部テスト
+- [ ] 審査提出
+- [ ] 公開確認 & git tag `v0.2.0`
+
+## Backlog（リリース後）
+
+- [ ] テスト拡充: NotificationService / FocusModeService / loadPreferencesIfNeeded
+- [ ] iOS UI テスト追加（macOS は 2件あるが iOS は 0件）
+- [ ] i18n 対応（日本語ローカライゼーション）— 調査中
