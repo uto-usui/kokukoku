@@ -259,7 +259,7 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 - [x] `ContentView.swift`: `MacSidebarItem` enum + `NavigationSplitView` 削除、iOS と統一
 - [x] `KokukokuApp.swift`: `WindowGroup` → `Window` + `.defaultSize(380, 640)` + `Settings` シーン
 - [x] CLAUDE.md アーキテクチャセクション更新
-- [ ] 手動検証（ウィンドウサイズ、⌘,、⌘N無効化、Dock クリック）
+- [x] 手動検証（ウィンドウサイズ、⌘,、⌘N無効化、Dock クリック）
 - [x] CI 全パス
 
 ## Backlog（リリース後）
