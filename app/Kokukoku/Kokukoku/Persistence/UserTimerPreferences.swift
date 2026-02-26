@@ -13,7 +13,7 @@ final class UserTimerPreferences {
     var respectFocusMode: Bool = true
     var ambientNoiseEnabled: Bool = false
     var ambientNoiseVolume: Double = 0.5
-    var generativeModeEnabled: Bool = false
+    var narrativeModeEnabled: Bool = false
     var boundaryStopPolicyRaw: String
     var updatedAt: Date
 
@@ -28,7 +28,7 @@ final class UserTimerPreferences {
         respectFocusMode: Bool = true,
         ambientNoiseEnabled: Bool = false,
         ambientNoiseVolume: Double = 0.5,
-        generativeModeEnabled: Bool = false,
+        narrativeModeEnabled: Bool = false,
         boundaryStopPolicyRaw: String,
         updatedAt: Date = Date()
     ) {
@@ -42,7 +42,7 @@ final class UserTimerPreferences {
         self.respectFocusMode = respectFocusMode
         self.ambientNoiseEnabled = ambientNoiseEnabled
         self.ambientNoiseVolume = ambientNoiseVolume
-        self.generativeModeEnabled = generativeModeEnabled
+        self.narrativeModeEnabled = narrativeModeEnabled
         self.boundaryStopPolicyRaw = boundaryStopPolicyRaw
         self.updatedAt = updatedAt
     }

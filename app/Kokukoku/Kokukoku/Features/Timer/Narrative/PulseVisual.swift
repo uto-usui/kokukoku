@@ -5,7 +5,7 @@ import SwiftUI
 /// Particles pulse with a double-peaked Gaussian envelope (lub-dub pattern)
 /// and ripple outward from the center. During break sessions, particle opacity
 /// decays gradually over time.
-struct PulseVisual: GenerativeVisual {
+struct PulseVisual: NarrativeVisual {
     // MARK: - Rhythm Parameters
 
     private static let bpm: Double = 60
@@ -52,7 +52,7 @@ struct PulseVisual: GenerativeVisual {
 
     // MARK: - Draw
 
-    mutating func draw(in context: inout GraphicsContext, input: GenerativeInput) {
+    mutating func draw(in context: inout GraphicsContext, input: NarrativeInput) {
         if !self.isInitialized {
             self.initializeParticles(canvasSize: input.canvasSize)
             self.isInitialized = true

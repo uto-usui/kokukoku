@@ -7,23 +7,27 @@ struct TimerScreen: View {
     @Bindable var store: TimerStore
 
     var body: some View {
-        Group {
-            if self.useGenerativeMode {
-                self.generativeBody
-            } else {
-                self.standardBody
-            }
-        }
-        .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
-        .overlay {
-            if self.colorSchemeContrast != .increased {
-                GrainOverlay()
-                    .opacity(0.04)
-                    .allowsHitTesting(false)
+        self.standardBody
+            .background {
+                if self.useNarrativeMode {
+                    NarrativeTimerView(
+                        elapsed: 0,
+                        progress: self.store.progress,
+                        sessionType: self.store.sessionType
+                    )
                     .ignoresSafeArea()
+                }
             }
-        }
-        .navigationTitle("Kokukoku")
+            .background(.ultraThinMaterial, ignoresSafeAreaEdges: .all)
+            .overlay {
+                if self.colorSchemeContrast != .increased {
+                    GrainOverlay()
+                        .opacity(0.04)
+                        .allowsHitTesting(false)
+                        .ignoresSafeArea()
+                }
+            }
+            .navigationTitle("Kokukoku")
         #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -112,78 +116,10 @@ struct TimerScreen: View {
         .frame(maxWidth: 680)
     }
 
-    // MARK: - Generative Mode
-
-    private var generativeBody: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                HStack(spacing: 6) {
-                    Image(systemName: self.store.sessionType.symbolName)
-                        .accessibilityHidden(true)
-                    Text(self.store.sessionType.title)
-                }
-                .font(.title3.weight(.medium))
-                .foregroundStyle(.secondary)
-                .accessibilityElement(children: .combine)
-                .zIndex(1)
-
-                GenerativeTimerView(
-                    elapsed: 0,
-                    progress: self.store.progress,
-                    sessionType: self.store.sessionType,
-                    formattedTime: self.store.formattedRemainingTime,
-                    cycleStatusText: self.store.focusCycleStatusText
-                )
-                .padding(.top, -80)
-
-                VStack(spacing: 12) {
-                    Button(self.store.primaryActionTitle) {
-                        self.store.performPrimaryAction()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(self.generativePrimaryTint)
-                    .accessibilityIdentifier("timer.primaryAction")
-
-                    HStack(spacing: 10) {
-                        Button("Reset") {
-                            self.store.reset()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .tint(.primary)
-                        .disabled(!self.store.canReset)
-                        .accessibilityIdentifier("timer.reset")
-
-                        Button("Skip") {
-                            self.store.skip()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .tint(.primary)
-                        .accessibilityIdentifier("timer.skip")
-                    }
-                }
-                .zIndex(1)
-            }
-            .padding(24)
-            .frame(maxWidth: 680)
-        }
-    }
-
     // MARK: - Helpers
 
-    private var useGenerativeMode: Bool {
-        self.store.config.generativeModeEnabled && !self.accessibilityReduceMotion
-    }
-
-    private var generativePrimaryTint: Color {
-        switch self.store.timerState {
-        case .running:
-            .orange
-        case .paused, .idle:
-            .blue
-        }
+    private var useNarrativeMode: Bool {
+        self.store.config.narrativeModeEnabled && !self.accessibilityReduceMotion
     }
 }
 

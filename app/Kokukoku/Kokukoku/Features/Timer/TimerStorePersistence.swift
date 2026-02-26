@@ -27,7 +27,7 @@ extension TimerStore {
                 respectFocusMode: TimerConfig.default.respectFocusMode,
                 ambientNoiseEnabled: TimerConfig.default.ambientNoiseEnabled,
                 ambientNoiseVolume: TimerConfig.default.ambientNoiseVolume,
-                generativeModeEnabled: TimerConfig.default.generativeModeEnabled,
+                narrativeModeEnabled: TimerConfig.default.narrativeModeEnabled,
                 boundaryStopPolicyRaw: BoundaryStopPolicy.none.rawValue
             )
 
@@ -51,7 +51,7 @@ extension TimerStore {
             respectFocusMode: preferences.respectFocusMode,
             ambientNoiseEnabled: preferences.ambientNoiseEnabled,
             ambientNoiseVolume: preferences.ambientNoiseVolume,
-            generativeModeEnabled: preferences.generativeModeEnabled
+            narrativeModeEnabled: preferences.narrativeModeEnabled
         )
 
         self.snapshot.boundaryStopPolicy = preferences.boundaryStopPolicy
@@ -79,7 +79,7 @@ extension TimerStore {
         preferences.respectFocusMode = self.config.respectFocusMode
         preferences.ambientNoiseEnabled = self.config.ambientNoiseEnabled
         preferences.ambientNoiseVolume = self.config.ambientNoiseVolume
-        preferences.generativeModeEnabled = self.config.generativeModeEnabled
+        preferences.narrativeModeEnabled = self.config.narrativeModeEnabled
         preferences.boundaryStopPolicy = self.snapshot.boundaryStopPolicy
         preferences.updatedAt = Date()
 

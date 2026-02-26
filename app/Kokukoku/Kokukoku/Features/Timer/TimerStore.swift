@@ -319,8 +319,8 @@ extension TimerStore {
         self.requestNotificationPermissionAndScheduleIfNeeded()
     }
 
-    func updateGenerativeModeEnabled(_ enabled: Bool) {
-        self.config.generativeModeEnabled = enabled
+    func updateNarrativeModeEnabled(_ enabled: Bool) {
+        self.config.narrativeModeEnabled = enabled
         self.persistPreferences()
     }
 

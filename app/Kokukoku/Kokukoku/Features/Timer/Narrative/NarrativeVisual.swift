@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Input data provided to a generative visual each frame.
-struct GenerativeInput {
+/// Input data provided to a narrative visual each frame.
+struct NarrativeInput {
     /// Session elapsed time in seconds (drives rhythm phase).
     let elapsed: TimeInterval
     /// Session progress from 0.0 (start) to 1.0 (complete).
@@ -14,15 +14,15 @@ struct GenerativeInput {
     let isDarkMode: Bool
 }
 
-/// A generative visual that draws into a SwiftUI `GraphicsContext` each frame.
-protocol GenerativeVisual {
+/// A narrative visual that draws into a SwiftUI `GraphicsContext` each frame.
+protocol NarrativeVisual {
     /// Draw the visual for the current frame.
-    mutating func draw(in context: inout GraphicsContext, input: GenerativeInput)
+    mutating func draw(in context: inout GraphicsContext, input: NarrativeInput)
 }
 
-/// Factory for creating generative visuals.
-enum GenerativeVisualFactory {
-    static func visual() -> any GenerativeVisual {
+/// Factory for creating narrative visuals.
+enum NarrativeVisualFactory {
+    static func visual() -> any NarrativeVisual {
         PulseVisual()
     }
 }
