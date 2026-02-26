@@ -7,10 +7,8 @@ struct SettingsScreen: View {
         Form {
             self.durationsSection
             self.behaviorSection
-            self.appearanceSection
-            self.focusModeSection
+            self.ambientNoiseSection
             self.notificationsSection
-            self.audioSection
 
             if let lastErrorMessage = self.store.lastErrorMessage {
                 Section("Diagnostics") {
@@ -36,10 +34,6 @@ struct SettingsScreen: View {
             Stepper(value: self.longBreakMinutesBinding, in: 1 ... 120) {
                 Text("Long Break: \(self.store.config.longBreakDurationSec / 60) min")
             }
-
-            Stepper(value: self.longBreakFrequencyBinding, in: 1 ... 10) {
-                Text("Long Break every \(self.store.config.longBreakFrequency) focus sessions")
-            }
         }
     }
 
@@ -52,6 +46,10 @@ struct SettingsScreen: View {
                     set: { self.store.updateAutoStart($0) }
                 )
             )
+
+            Stepper(value: self.longBreakFrequencyBinding, in: 1 ... 10) {
+                Text("Long Break every \(self.store.config.longBreakFrequency) focus sessions")
+            }
 
             Picker(
                 "Boundary stop policy",
@@ -67,30 +65,15 @@ struct SettingsScreen: View {
         }
     }
 
-    private var appearanceSection: some View {
-        Section("Appearance") {
+    private var notificationsSection: some View {
+        Section("Notifications") {
             Toggle(
-                "Generative Mode",
+                "Notification Sound",
                 isOn: Binding(
-                    get: { self.store.config.generativeModeEnabled },
-                    set: { self.store.updateGenerativeModeEnabled($0) }
+                    get: { self.store.config.notificationSoundEnabled },
+                    set: { self.store.updateNotificationSoundEnabled($0) }
                 )
             )
-
-            Text("Replaces the progress bar with a rhythm animation.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    private var focusModeSection: some View {
-        Section("System Focus") {
-            HStack {
-                Text("Status")
-                Spacer()
-                Text(self.focusStatusLabel)
-                    .foregroundStyle(.secondary)
-            }
 
             if self.store.focusModeStatus.authorizationState == .unknown {
                 Button("Allow Focus Access") {
@@ -99,62 +82,35 @@ struct SettingsScreen: View {
             }
 
             Toggle(
-                "Respect Focus Mode",
+                "Mute in Focus",
                 isOn: Binding(
                     get: { self.store.config.respectFocusMode },
                     set: { self.store.updateRespectFocusMode($0) }
                 )
             )
-
-            Text("When enabled, notification sound is muted while Focus is active.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
     }
 
-    private var notificationsSection: some View {
-        Section("Notifications") {
+    private var ambientNoiseSection: some View {
+        Section("Ambient Noise") {
             Toggle(
-                "Sound",
+                "Ambient Noise",
                 isOn: Binding(
-                    get: { self.store.config.notificationSoundEnabled },
-                    set: { self.store.updateNotificationSoundEnabled($0) }
+                    get: { self.store.config.ambientNoiseEnabled },
+                    set: { self.store.updateAmbientNoiseEnabled($0) }
                 )
             )
 
-            Text("Permission: \(self.store.notificationAuthorizationState.rawValue)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            Text("Effective sound: \(self.store.effectiveNotificationSoundEnabled ? "On" : "Off")")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder
-    private var audioSection: some View {
-        if self.store.config.notificationSoundEnabled {
-            Section("Audio") {
-                Toggle(
-                    "Ambient Noise",
-                    isOn: Binding(
-                        get: { self.store.config.ambientNoiseEnabled },
-                        set: { self.store.updateAmbientNoiseEnabled($0) }
+            if self.store.config.ambientNoiseEnabled {
+                HStack {
+                    Text("Volume")
+                    Slider(
+                        value: Binding(
+                            get: { self.store.config.ambientNoiseVolume },
+                            set: { self.store.updateAmbientNoiseVolume($0) }
+                        ),
+                        in: 0 ... 1
                     )
-                )
-
-                if self.store.config.ambientNoiseEnabled {
-                    HStack {
-                        Text("Volume")
-                        Slider(
-                            value: Binding(
-                                get: { self.store.config.ambientNoiseVolume },
-                                set: { self.store.updateAmbientNoiseVolume($0) }
-                            ),
-                            in: 0 ... 1
-                        )
-                    }
                 }
             }
         }
@@ -186,20 +142,5 @@ struct SettingsScreen: View {
             get: { self.store.config.longBreakFrequency },
             set: { self.store.updateLongBreakFrequency($0) }
         )
-    }
-
-    private var focusStatusLabel: String {
-        switch self.store.focusModeStatus.authorizationState {
-        case .unavailable:
-            "Unavailable"
-        case .unknown:
-            "Not Granted"
-        case .restricted:
-            "Restricted"
-        case .denied:
-            "Denied"
-        case .authorized:
-            self.store.focusModeStatus.isFocused ? "Active" : "Inactive"
-        }
     }
 }

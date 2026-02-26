@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - SwiftFormat auto-apply hook on file edit
 - Claude Code onboarding guide (CLAUDE.md)
 - Material surface texture (grain overlay) and vibrant typography via `.ultraThinMaterial`
-- Generative mode (pulse animation) as alternative timer display
+- Narrative mode (pulse animation) as background visual layer (currently hidden from settings, pending redesign)
 - Ambient noise (pink noise) during focus sessions
 - Haptic feedback on session transitions
 - System Focus Mode integration (mute sounds when Focus active)

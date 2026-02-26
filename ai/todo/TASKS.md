@@ -144,7 +144,7 @@
 - [x] SettingsScreen "Audio" セクション追加（Toggle + Volume Slider）
 - [x] Unit test: ライフサイクル制御（mock protocol）
 - [x] Unit test: 設定の永続化
-- [ ] 手動確認（音質・ボリューム・他アプリとの共存）
+- [x] 手動確認（音質・ボリューム・他アプリとの共存）
 
 ## Generative Mode (Pulse)
 
@@ -186,3 +186,39 @@
 - [x] Reset/Skip: paused 時のみインライン表示
 - [x] `...` Menu: 全状態で常時表示（running 中も非表示にしない）
 - [x] macOS ビルド / iOS ビルド検証通過
+
+## Narrative Mode Rename & Style Unification
+
+Generative Mode を Narrative Mode にリネームし、標準モードと統一されたスタイルを適用する。
+**Status: ペンディング** — コードは残存するが Settings UI からトグルを削除し、ユーザーからはアクセス不可。将来的にビジュアル表現を再検討後に復活予定。
+
+- [x] Rename: generativeMode → narrativeMode（TimerConfig, UserTimerPreferences, SettingsScreen, TimerScreen, コード・コメント全般）
+- [x] Directory/File rename: Generative/ → Narrative/, GenerativeTimerView → NarrativeTimerView, GenerativeVisual → NarrativeVisual
+- [x] Narrative body: 独立レイアウト廃止 → 標準モードの背景レイヤーとしてキャンバスを配置（UI は完全に標準モードと同一）
+- [x] NarrativeTimerView: テキストオーバーレイ除去、キャンバス描画のみの純粋なビューに簡素化
+- [x] Settings から Appearance セクション（Narrative Mode トグル）を非表示化
+- [x] Build 検証（macOS + iOS）
+
+## Desktop App Style Unification
+
+macOS 固有の UI スタイルを全体のデザイン言語に合わせる。
+
+- [x] MenuBarTimerView: `.borderedProminent` + orange/blue tint → `Capsule().fill(.tertiary)` + `.buttonStyle(.plain)`（統一スタイル）
+- [x] MenuBarTimerView: timer digits を 34pt thin weight に変更
+- [x] macOS detail view: `.toolbarBackgroundVisibility(.hidden, for: .windowToolbar)` 適用
+- [x] Build 検証（macOS + iOS）
+
+## Settings Screen Redesign
+
+Settings 画面のセクション構成・項目順序・文言を整理。Codex レビューを経て最終確定。
+
+- [x] Notifications / Audio / System Focus → Sound セクションに統合
+- [x] 診断テキスト削除（Permission, Effective Sound）
+- [x] 説明注釈削除（Focus Mode 説明文）
+- [x] Sound → Notifications + Ambient Noise に再分割（Codex フィードバック反映）
+- [x] Long Break frequency を Durations → Behavior に移動
+- [x] 未使用 `appearanceSection` プロパティ削除
+- [x] 「Respect Focus Mode」→「Mute in Focus」に文言変更
+- [x] セクション順: Durations → Behavior → Ambient Noise → Notifications（日常調整先、システム連携後）
+- [x] Notifications 内順序: Notification Sound → Allow Focus Access → Mute in Focus（権限付与→挙動の順）
+- [x] Build 検証（macOS + iOS テスト全パス）
