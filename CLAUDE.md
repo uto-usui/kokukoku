@@ -16,7 +16,7 @@ xcodebuild -project app/Kokukoku/Kokukoku.xcodeproj -scheme Kokukoku -configurat
 ```
 app/Kokukoku/Kokukoku/
 ├── KokukokuApp.swift          # Entry point, SwiftData ModelContainer setup
-├── ContentView.swift          # Platform-conditional navigation (NavigationStack iOS / NavigationSplitView macOS)
+├── ContentView.swift          # Unified NavigationStack with sheet-based secondary screens
 ├── Domain/
 │   ├── TimerTypes.swift       # Value types: TimerState, SessionType, BoundaryStopPolicy, TimerConfig, TimerSnapshot
 │   └── TimerEngine.swift      # Pure stateless functions for transitions, time calc, progress

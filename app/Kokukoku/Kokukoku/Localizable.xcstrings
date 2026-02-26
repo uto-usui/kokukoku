@@ -131,16 +131,6 @@
         }
       }
     },
-    "Timer" : {
-      "localizations" : {
-        "ja" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "タイマー"
-          }
-        }
-      }
-    },
     "History" : {
       "localizations" : {
         "ja" : {

@@ -1,38 +1,6 @@
 import SwiftData
 import SwiftUI
 
-private enum MacSidebarItem: String, CaseIterable, Identifiable {
-    case timer
-    case history
-    case settings
-
-    var id: String {
-        self.rawValue
-    }
-
-    var title: String {
-        switch self {
-        case .timer:
-            String(localized: "Timer")
-        case .history:
-            String(localized: "History")
-        case .settings:
-            String(localized: "Settings")
-        }
-    }
-
-    var symbolName: String {
-        switch self {
-        case .timer:
-            "timer"
-        case .history:
-            "clock.arrow.circlepath"
-        case .settings:
-            "gearshape"
-        }
-    }
-}
-
 struct ContentView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceMotion) private var accessibilityReduceMotion
@@ -41,14 +9,34 @@ struct ContentView: View {
 
     @Namespace private var sheetTransition
     @State private var hasDismissedLaunchOverlay = false
+    @State private var showHistory = false
+    @State private var showSettings = false
     @Bindable var store: TimerStore
 
     var body: some View {
-        Group {
+        NavigationStack {
+            TimerScreen(store: self.store)
+                .toolbar {
+                    #if os(macOS)
+                        ToolbarItem(placement: .primaryAction) {
+                            self.ellipsisMenu
+                        }
+                    #else
+                        ToolbarItem(placement: .topBarTrailing) {
+                            self.ellipsisMenu
+                        }
+                    #endif
+                }
+                .sheet(isPresented: self.$showHistory) {
+                    self.historySheet
+                }
+                .sheet(isPresented: self.$showSettings) {
+                    self.settingsSheet
+                }
             #if os(macOS)
-                self.macLayout
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
             #else
-                self.iosLayout
+                .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
             #endif
         }
         .overlay {
@@ -74,112 +62,81 @@ struct ContentView: View {
         }
     }
 
-    #if os(macOS)
-        @State private var selectedSidebarItem: MacSidebarItem = .timer
+    // MARK: - Menu
 
-        private var macLayout: some View {
-            NavigationSplitView {
-                List(MacSidebarItem.allCases, selection: self.$selectedSidebarItem) { item in
-                    Label(item.title, systemImage: item.symbolName)
-                        .tag(item)
-                }
-                .navigationTitle(Text(verbatim: "Kokukoku"))
-                .listStyle(.sidebar)
-                .frame(minWidth: 200)
-            } detail: {
-                switch self.selectedSidebarItem {
-                case .timer:
-                    NavigationStack {
-                        TimerScreen(store: self.store)
-                            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-                    }
-                case .history:
-                    NavigationStack {
-                        HistoryScreen()
-                    }
-                case .settings:
-                    NavigationStack {
-                        SettingsScreen(store: self.store)
-                    }
-                }
+    private var ellipsisMenu: some View {
+        Menu {
+            Toggle(
+                isOn: Binding(
+                    get: { self.store.config.ambientNoiseEnabled },
+                    set: { self.store.updateAmbientNoiseEnabled($0) }
+                )
+            ) {
+                Label("Sound", systemImage: "speaker.wave.2")
             }
-            .frame(minWidth: 900, minHeight: 600)
-        }
-    #else
-        @State private var showHistory = false
-        @State private var showSettings = false
 
-        private var iosLayout: some View {
-            NavigationStack {
-                TimerScreen(store: self.store)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Menu {
-                                Toggle(
-                                    isOn: Binding(
-                                        get: { self.store.config.ambientNoiseEnabled },
-                                        set: { self.store.updateAmbientNoiseEnabled($0) }
-                                    )
-                                ) {
-                                    Label("Sound", systemImage: "speaker.wave.2")
-                                }
-
-                                Button {
-                                    self.showHistory = true
-                                } label: {
-                                    Label("History", systemImage: "clock.arrow.circlepath")
-                                }
-
-                                Button {
-                                    self.showSettings = true
-                                } label: {
-                                    Label("Settings\u{2026}", systemImage: "gearshape")
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis")
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(.primary)
-                            .matchedTransitionSource(id: "systemMenu", in: self.sheetTransition)
-                            .accessibilityLabel("Menu")
-                            .accessibilityIdentifier("nav.system")
-                        }
-                    }
-                    .sheet(isPresented: self.$showHistory) {
-                        NavigationStack {
-                            HistoryScreen()
-                                .toolbar {
-                                    ToolbarItem(placement: .cancellationAction) {
-                                        Button("", systemImage: "xmark") {
-                                            self.showHistory = false
-                                        }
-                                    }
-                                }
-                        }
-                        .navigationTransition(
-                            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
-                        )
-                    }
-                    .sheet(isPresented: self.$showSettings) {
-                        NavigationStack {
-                            SettingsScreen(store: self.store)
-                                .toolbar {
-                                    ToolbarItem(placement: .cancellationAction) {
-                                        Button("", systemImage: "xmark") {
-                                            self.showSettings = false
-                                        }
-                                    }
-                                }
-                        }
-                        .navigationTransition(
-                            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
-                        )
-                    }
-                    .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
+            Button {
+                self.showHistory = true
+            } label: {
+                Label("History", systemImage: "clock.arrow.circlepath")
             }
-        }
 
-    #endif
+            Button {
+                self.showSettings = true
+            } label: {
+                Label("Settings\u{2026}", systemImage: "gearshape")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+        #if os(iOS)
+            .matchedTransitionSource(id: "systemMenu", in: self.sheetTransition)
+        #endif
+            .accessibilityLabel("Menu")
+            .accessibilityIdentifier("nav.system")
+    }
+
+    // MARK: - Sheets
+
+    private var historySheet: some View {
+        NavigationStack {
+            HistoryScreen()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("", systemImage: "xmark") {
+                            self.showHistory = false
+                        }
+                    }
+                }
+        }
+        #if os(iOS)
+        .navigationTransition(
+            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+        )
+        #endif
+    }
+
+    private var settingsSheet: some View {
+        NavigationStack {
+            SettingsScreen(store: self.store)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("", systemImage: "xmark") {
+                            self.showSettings = false
+                        }
+                    }
+                }
+        }
+        #if os(iOS)
+        .navigationTransition(
+            .zoom(sourceID: "systemMenu", in: self.sheetTransition)
+        )
+        #endif
+    }
+
+    // MARK: - Launch Overlay
 
     private func dismissLaunchOverlayIfNeeded() async {
         guard !self.hasDismissedLaunchOverlay else {
