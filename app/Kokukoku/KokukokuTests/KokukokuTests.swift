@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 @testable import Kokukoku
 import SwiftData
@@ -150,6 +151,7 @@ struct TimerEngineTests {
 }
 
 @MainActor
+// swiftlint:disable:next type_body_length
 struct TimerStoreTests {
     @Test func startPauseResumeReset_primaryActionsTransitionCorrectly() async {
         let notificationSpy = NotificationServiceSpy()
@@ -699,7 +701,7 @@ struct WatchSyncPayloadTests {
         snapshot.endDate = now.addingTimeInterval(1500)
         let context = WatchSyncPayload.build(snapshot: snapshot, config: .default, now: now)
 
-        #expect(context["endDateEpoch"] as? Double != nil)
+        #expect(context["endDateEpoch"] is Double)
         #expect(context["pausedRemainingSec"] == nil)
         #expect(context["timerState"] as? String == "running")
     }

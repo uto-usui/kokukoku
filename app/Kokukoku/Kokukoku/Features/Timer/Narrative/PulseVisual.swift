@@ -52,108 +52,113 @@ struct PulseVisual: NarrativeVisual {
 
     // MARK: - Draw
 
+    private struct FrameContext {
+        let input: NarrativeInput
+        let center: CGPoint
+        let maxRadius: Double
+        let beatPhase: Double
+        let heartbeatIntensity: Double
+        let sessionAlpha: Double
+        let baseColor: Color
+    }
+
     mutating func draw(in context: inout GraphicsContext, input: NarrativeInput) {
         if !self.isInitialized {
             self.initializeParticles(canvasSize: input.canvasSize)
             self.isInitialized = true
         }
 
-        let dt = 1.0 / 60.0
         let beatPeriod = 60.0 / Self.bpm
         let beatPhase = input.elapsed.truncatingRemainder(dividingBy: beatPeriod) / beatPeriod
-        let heartbeatIntensity = Self.heartbeatEnvelope(phase: beatPhase)
+        let frame = FrameContext(
+            input: input,
+            center: CGPoint(x: input.canvasSize.width / 2, y: input.canvasSize.height / 2),
+            maxRadius: min(input.canvasSize.width, input.canvasSize.height) / 2,
+            beatPhase: beatPhase,
+            heartbeatIntensity: Self.heartbeatEnvelope(phase: beatPhase),
+            sessionAlpha: Self.sessionAlpha(sessionType: input.sessionType, progress: input.progress),
+            baseColor: input.isDarkMode
+                ? Color(red: 220.0 / 255, green: 218.0 / 255, blue: 214.0 / 255)
+                : Color(red: 75.0 / 255, green: 65.0 / 255, blue: 55.0 / 255)
+        )
 
-        let sessionAlpha = Self.sessionAlpha(sessionType: input.sessionType, progress: input.progress)
-        let center = CGPoint(x: input.canvasSize.width / 2, y: input.canvasSize.height / 2)
-        let maxRadius = min(input.canvasSize.width, input.canvasSize.height) / 2
+        self.drawParticles(in: &context, frame: frame)
+        self.drawCenterGlow(in: &context, frame: frame)
+    }
 
-        let softScale = input.isDarkMode ? Self.darkSoftScale : Self.lightSoftScale
-        let alphaScale = input.isDarkMode ? Self.darkAlphaScale : Self.lightAlphaScale
-        let innerR = input.isDarkMode ? Self.darkInnerR : Self.lightInnerR
-        let outerR = input.isDarkMode ? Self.darkOuterR : Self.lightOuterR
-        let midStop = input.isDarkMode ? Self.darkMidStop : Self.lightMidStop
-        let midAlpha = input.isDarkMode ? Self.darkMidAlpha : Self.lightMidAlpha
-        // Warm tones matching the HTML mockup
-        let baseColor = input.isDarkMode
-            ? Color(red: 220.0 / 255, green: 218.0 / 255, blue: 214.0 / 255)
-            : Color(red: 75.0 / 255, green: 65.0 / 255, blue: 55.0 / 255)
+    // MARK: - Particle Pass
 
-        for i in 0 ..< self.particles.count {
-            self.particles[i].updateDrift(dt: dt, maxRadius: maxRadius)
+    private mutating func drawParticles(in context: inout GraphicsContext, frame: FrameContext) {
+        let dt = 1.0 / 60.0
+        let isDark = frame.input.isDarkMode
+        let softScale = isDark ? Self.darkSoftScale : Self.lightSoftScale
+        let alphaScale = isDark ? Self.darkAlphaScale : Self.lightAlphaScale
+        let innerR = isDark ? Self.darkInnerR : Self.lightInnerR
+        let outerR = isDark ? Self.darkOuterR : Self.lightOuterR
+        let midStop = isDark ? Self.darkMidStop : Self.lightMidStop
+        let midAlpha = isDark ? Self.darkMidAlpha : Self.lightMidAlpha
+        let beatPeriod = 60.0 / Self.bpm
 
-            let worldX = center.x + self.particles[i].baseOffset.x + self.particles[i].driftOffset.x
-            let worldY = center.y + self.particles[i].baseOffset.y + self.particles[i].driftOffset.y
+        for idx in 0 ..< self.particles.count {
+            self.particles[idx].updateDrift(dt: dt, maxRadius: frame.maxRadius)
+
+            let worldX = frame.center.x + self.particles[idx].baseOffset.x + self.particles[idx].driftOffset.x
+            let worldY = frame.center.y + self.particles[idx].baseOffset.y + self.particles[idx].driftOffset.y
             let position = CGPoint(x: worldX, y: worldY)
-            let distFromCenter = self.particles[i].distFromCenter
 
             let ripple = Self.rippleIntensity(
-                distance: distFromCenter / maxRadius,
-                beatPhase: beatPhase,
-                beatPeriod: beatPeriod
+                distance: self.particles[idx].distFromCenter / frame.maxRadius,
+                beatPhase: frame.beatPhase, beatPeriod: beatPeriod
             )
-
-            let pulseAmount = heartbeatIntensity * ripple
-
-            // Size: base * scale * softScale * individual oscillation (matches mockup)
+            let pulseAmount = frame.heartbeatIntensity * ripple
             let scale = 1.0 + pulseAmount * Self.pulseScale
-            let individualOsc = sin(input.elapsed + self.particles[i].phaseOffset) * 0.05
-            let finalRadius = max(1.0, self.particles[i].baseSize * scale * softScale * (1.0 + individualOsc))
-
-            // Alpha: (baseAlpha + pulseAmount * pulseAlpha) * sessionAlpha * alphaScale (matches mockup)
-            let particleAlpha = min(1.0, (Self.baseAlpha + pulseAmount * Self.pulseAlpha) * sessionAlpha * alphaScale)
-
-            // Radial gradient from innerR to outerR (solid core inside innerR)
-            let innerRadius = finalRadius * innerR
+            let individualOsc = sin(frame.input.elapsed + self.particles[idx].phaseOffset) * 0.05
+            let finalRadius = max(1.0, self.particles[idx].baseSize * scale * softScale * (1.0 + individualOsc))
+            let particleAlpha = min(
+                1.0, (Self.baseAlpha + pulseAmount * Self.pulseAlpha) * frame.sessionAlpha * alphaScale
+            )
             let outerRadius = finalRadius * outerR
             let rect = CGRect(
-                x: position.x - outerRadius,
-                y: position.y - outerRadius,
-                width: outerRadius * 2,
-                height: outerRadius * 2
+                x: position.x - outerRadius, y: position.y - outerRadius,
+                width: outerRadius * 2, height: outerRadius * 2
             )
-
             let gradient = Gradient(stops: [
-                .init(color: baseColor.opacity(particleAlpha), location: 0),
-                .init(color: baseColor.opacity(particleAlpha * midAlpha), location: midStop),
-                .init(color: baseColor.opacity(0), location: 1.0)
+                .init(color: frame.baseColor.opacity(particleAlpha), location: 0),
+                .init(color: frame.baseColor.opacity(particleAlpha * midAlpha), location: midStop),
+                .init(color: frame.baseColor.opacity(0), location: 1.0)
             ])
-
             context.fill(
                 Path(ellipseIn: rect),
                 with: .radialGradient(
                     gradient,
                     center: position,
-                    startRadius: innerRadius,
+                    startRadius: finalRadius * innerR,
                     endRadius: outerRadius
                 )
             )
         }
+    }
 
-        // Center glow: separate pass, drawn once (matches mockup)
-        let centerGlow = input.isDarkMode ? Self.darkCenterGlow : Self.lightCenterGlow
-        if heartbeatIntensity > 0.1, centerGlow > 0 {
-            let glowR = maxRadius * 0.18 * heartbeatIntensity
-            let glowA = heartbeatIntensity * centerGlow * sessionAlpha
-            let glowGradient = Gradient(stops: [
-                .init(color: baseColor.opacity(glowA), location: 0),
-                .init(color: baseColor.opacity(0), location: 1.0)
-            ])
-            let glowRect = CGRect(
-                x: center.x - glowR,
-                y: center.y - glowR,
-                width: glowR * 2,
-                height: glowR * 2
-            )
-            context.fill(
-                Path(ellipseIn: glowRect),
-                with: .radialGradient(
-                    glowGradient,
-                    center: center,
-                    startRadius: 0,
-                    endRadius: glowR
-                )
-            )
-        }
+    // MARK: - Center Glow Pass
+
+    private func drawCenterGlow(in context: inout GraphicsContext, frame: FrameContext) {
+        let centerGlow = frame.input.isDarkMode ? Self.darkCenterGlow : Self.lightCenterGlow
+        guard frame.heartbeatIntensity > 0.1, centerGlow > 0 else { return }
+
+        let glowR = frame.maxRadius * 0.18 * frame.heartbeatIntensity
+        let glowA = frame.heartbeatIntensity * centerGlow * frame.sessionAlpha
+        let glowGradient = Gradient(stops: [
+            .init(color: frame.baseColor.opacity(glowA), location: 0),
+            .init(color: frame.baseColor.opacity(0), location: 1.0)
+        ])
+        let glowRect = CGRect(
+            x: frame.center.x - glowR, y: frame.center.y - glowR,
+            width: glowR * 2, height: glowR * 2
+        )
+        context.fill(
+            Path(ellipseIn: glowRect),
+            with: .radialGradient(glowGradient, center: frame.center, startRadius: 0, endRadius: glowR)
+        )
     }
 
     // MARK: - Heartbeat Envelope

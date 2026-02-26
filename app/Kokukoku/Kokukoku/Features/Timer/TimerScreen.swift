@@ -134,12 +134,12 @@ private struct GrainOverlay: View {
     private static let grainImage: CGImage? = {
         let size = 128
         var pixels = [UInt8](repeating: 0, count: size * size * 4)
-        for i in 0 ..< size * size {
+        for px in 0 ..< size * size {
             let val = UInt8.random(in: 0 ... 255)
-            pixels[i * 4] = val
-            pixels[i * 4 + 1] = val
-            pixels[i * 4 + 2] = val
-            pixels[i * 4 + 3] = 255
+            pixels[px * 4] = val
+            pixels[px * 4 + 1] = val
+            pixels[px * 4 + 2] = val
+            pixels[px * 4 + 3] = 255
         }
         guard let provider = CGDataProvider(data: Data(pixels) as CFData) else { return nil }
         return CGImage(

@@ -141,13 +141,13 @@
         private var rows = [Float](repeating: 0, count: PinkNoiseGenerator.rowCount)
 
         func fill(buffer: UnsafeMutablePointer<Float>, frameCount: Int) {
-            for i in 0 ..< frameCount {
+            for frame in 0 ..< frameCount {
                 let white = Float.random(in: -1 ... 1)
                 let row = Int.random(in: 0 ..< Self.rowCount)
                 self.runningSum -= self.rows[row]
                 self.rows[row] = white / Float(Self.rowCount)
                 self.runningSum += self.rows[row]
-                buffer[i] = (self.runningSum + white / Float(Self.rowCount)) * 0.5
+                buffer[frame] = (self.runningSum + white / Float(Self.rowCount)) * 0.5
             }
         }
     }

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import Observation
 import SwiftData
@@ -524,9 +525,7 @@ extension TimerStore {
             self.ambientNoiseService.setVolume(volume)
         #endif
     }
-}
 
-extension TimerStore {
     /// Start or stop ambient noise based on current timer state and config.
     ///
     /// Noise plays only when: ambient noise is enabled, the current session is focus, and the timer is running.
@@ -543,9 +542,7 @@ extension TimerStore {
             }
         #endif
     }
-}
 
-extension TimerStore {
     private func requestNotificationPermissionAndScheduleIfNeeded() {
         guard self.snapshot.timerState == .running, let endDate = self.snapshot.endDate else {
             self.notificationService.cancelSessionEndNotification()
