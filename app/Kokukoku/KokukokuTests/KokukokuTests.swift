@@ -65,6 +65,27 @@ private final class FocusModeServiceSpy: FocusModeServicing {
     }
 }
 
+@MainActor
+private final class WatchSyncServiceSpy: WatchSyncServicing {
+    var activateCallCount = 0
+    var syncCallCount = 0
+    var lastSyncSnapshot: TimerSnapshot?
+    var commandHandler: (@MainActor (WatchTimerCommand) -> Void)?
+
+    func activate() {
+        self.activateCallCount += 1
+    }
+
+    func setCommandHandler(_ handler: (@MainActor (WatchTimerCommand) -> Void)?) {
+        self.commandHandler = handler
+    }
+
+    func sync(snapshot: TimerSnapshot, config: TimerConfig, now: Date) {
+        self.syncCallCount += 1
+        self.lastSyncSnapshot = snapshot
+    }
+}
+
 struct TimerEngineTests {
     private let config = TimerConfig.default
 
@@ -145,6 +166,77 @@ struct TimerEngineTests {
             autoStart: false
         )
 
+        #expect(decision.shouldStop)
+        #expect(!decision.consumePolicy)
+    }
+}
+
+@Suite("TimerEngine – Edge Cases")
+struct TimerEngineEdgeCaseTests {
+    @Test func progress_durationZero_returnsOne() {
+        #expect(TimerEngine.progress(durationSec: 0, remainingSec: 0) == 1.0)
+    }
+
+    @Test func progress_remainingExceedsDuration_returnsZero() {
+        #expect(TimerEngine.progress(durationSec: 100, remainingSec: 200) == 0.0)
+    }
+
+    @Test func progress_remainingNegative_clampsToOne() {
+        #expect(TimerEngine.progress(durationSec: 100, remainingSec: -10) == 1.0)
+    }
+
+    @Test func remainingSeconds_runningWithNilEndDate_returnsFallback() {
+        let remaining = TimerEngine.remainingSeconds(
+            timerState: .running,
+            endDate: nil,
+            pausedRemainingSec: nil,
+            now: Date(),
+            fallbackDurationSec: 300
+        )
+        #expect(remaining == 300)
+    }
+
+    @Test func remainingSeconds_runningAlreadyElapsed_returnsZero() {
+        let now = Date()
+        let remaining = TimerEngine.remainingSeconds(
+            timerState: .running,
+            endDate: now.addingTimeInterval(-60),
+            pausedRemainingSec: nil,
+            now: now,
+            fallbackDurationSec: 300
+        )
+        #expect(remaining == 0)
+    }
+
+    @Test func remainingSeconds_pausedWithNilPausedRemaining_returnsFallback() {
+        let remaining = TimerEngine.remainingSeconds(
+            timerState: .paused,
+            endDate: nil,
+            pausedRemainingSec: nil,
+            now: Date(),
+            fallbackDurationSec: 300
+        )
+        #expect(remaining == 300)
+    }
+
+    @Test func stopPolicy_skipWithAutoStart_doesNotStop() {
+        let decision = TimerEngine.shouldStopAtBoundary(
+            policy: .stopAtNextBoundary,
+            nextSessionType: .shortBreak,
+            dueToSkip: true,
+            autoStart: true
+        )
+        #expect(!decision.shouldStop)
+        #expect(!decision.consumePolicy)
+    }
+
+    @Test func stopPolicy_skipWithoutAutoStart_stops() {
+        let decision = TimerEngine.shouldStopAtBoundary(
+            policy: .none,
+            nextSessionType: .shortBreak,
+            dueToSkip: true,
+            autoStart: false
+        )
         #expect(decision.shouldStop)
         #expect(!decision.consumePolicy)
     }
@@ -504,6 +596,133 @@ struct TimerStoreTests {
         #expect(records.first?.skipped == true)
     }
 
+    // MARK: - Guard Tests (no-op when wrong state)
+
+    @Test func pause_whenIdle_isNoOp() {
+        let store = TimerStore()
+        #expect(store.timerState == .idle)
+        store.pause()
+        #expect(store.timerState == .idle)
+    }
+
+    @Test func pause_whenAlreadyPaused_isNoOp() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .paused,
+            startedAt: now.addingTimeInterval(-300),
+            endDate: nil,
+            pausedRemainingSec: 200,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+        store.pause()
+        #expect(store.timerState == .paused)
+        #expect(store.remainingSeconds == 200)
+    }
+
+    @Test func resume_whenIdle_isNoOp() {
+        let store = TimerStore()
+        #expect(store.timerState == .idle)
+        store.resume()
+        #expect(store.timerState == .idle)
+    }
+
+    @Test func resume_whenRunning_isNoOp() {
+        let store = TimerStore()
+        let now = Date()
+        store.now = now
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-300),
+            endDate: now.addingTimeInterval(600),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+        store.resume()
+        #expect(store.timerState == .running)
+    }
+
+    // MARK: - Config Change While Active
+
+    @Test func configChange_whileRunning_clampsRemainingToNewDuration() {
+        let store = TimerStore(notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied))
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default // 25 min focus
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-100),
+            endDate: now.addingTimeInterval(1400), // ~1400s remaining
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.updateFocusMinutes(5) // 300s
+        // handleConfigChangeWhileActiveTimer sets endDate from Date(), so sync now
+        store.now = Date()
+        #expect(store.remainingSeconds <= 300)
+        #expect(store.timerState == .running)
+    }
+
+    @Test func configChange_whilePaused_clampsRemainingToNewDuration() {
+        let store = TimerStore()
+        store.config = TimerConfig.default // 25 min focus
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .paused,
+            startedAt: Date().addingTimeInterval(-100),
+            endDate: nil,
+            pausedRemainingSec: 1400,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.updateFocusMinutes(5) // 300s
+        #expect(store.remainingSeconds <= 300)
+        #expect(store.timerState == .paused)
+    }
+
+    @Test func configChange_whenIdle_doesNotCrash() {
+        let store = TimerStore()
+        store.config = TimerConfig.default
+        store.updateFocusMinutes(10)
+        #expect(store.timerState == .idle)
+    }
+
+    // MARK: - Multi-Boundary Restoration
+
+    @Test func restore_multipleSessionsElapsed_advancesMultipleSessions() {
+        let store = TimerStore()
+        var config = TimerConfig.default
+        config.focusDurationSec = 60 // 1 min focus
+        config.shortBreakDurationSec = 60 // 1 min break
+        store.config = config
+
+        let realNow = Date()
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: realNow.addingTimeInterval(-150),
+            endDate: realNow.addingTimeInterval(-90), // Focus ended 90s ago
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.handleScenePhaseChange(.active)
+
+        #expect(store.completedFocusCount == 1)
+        #expect(store.sessionType == .focus)
+        #expect(store.timerState == .running)
+    }
+
     private static func makeInMemoryModelContext() throws -> ModelContext {
         let schema = Schema([
             SessionRecord.self,
@@ -623,6 +842,184 @@ struct TimerStoreTests {
         }
     }
 #endif
+
+@MainActor
+@Suite("Persistence")
+struct PersistenceTests {
+    private static func makeInMemoryModelContext() throws -> ModelContext {
+        let schema = Schema([
+            SessionRecord.self,
+            UserTimerPreferences.self
+        ])
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        return ModelContext(container)
+    }
+
+    @Test func loadPreferences_createsDefaultsWhenEmpty() throws {
+        let store = TimerStore(
+            notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied)
+        )
+        let modelContext = try Self.makeInMemoryModelContext()
+        store.bind(modelContext: modelContext)
+
+        let prefs = try modelContext.fetch(FetchDescriptor<UserTimerPreferences>())
+        #expect(prefs.count == 1)
+        #expect(prefs.first?.focusDurationSec == TimerConfig.default.focusDurationSec)
+        #expect(prefs.first?.shortBreakDurationSec == TimerConfig.default.shortBreakDurationSec)
+        #expect(prefs.first?.autoStart == TimerConfig.default.autoStart)
+    }
+
+    @Test func persistPreferences_fullFieldRoundtrip() throws {
+        let store = TimerStore(
+            notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied)
+        )
+        let modelContext = try Self.makeInMemoryModelContext()
+        store.bind(modelContext: modelContext)
+
+        store.config.focusDurationSec = 30 * 60
+        store.config.shortBreakDurationSec = 10 * 60
+        store.config.longBreakDurationSec = 20 * 60
+        store.config.longBreakFrequency = 6
+        store.config.autoStart = false
+        store.config.notificationSoundEnabled = false
+        store.config.respectFocusMode = false
+        store.config.ambientNoiseEnabled = true
+        store.config.ambientNoiseVolume = 0.8
+        store.config.narrativeModeEnabled = true
+        store.snapshot.boundaryStopPolicy = .stopAtLongBreak
+        store.persistPreferences()
+
+        let store2 = TimerStore(
+            notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied)
+        )
+        store2.bind(modelContext: modelContext)
+
+        #expect(store2.config.focusDurationSec == 30 * 60)
+        #expect(store2.config.shortBreakDurationSec == 10 * 60)
+        #expect(store2.config.longBreakDurationSec == 20 * 60)
+        #expect(store2.config.longBreakFrequency == 6)
+        #expect(store2.config.autoStart == false)
+        #expect(store2.config.notificationSoundEnabled == false)
+        #expect(store2.config.respectFocusMode == false)
+        #expect(store2.config.ambientNoiseEnabled == true)
+        #expect(store2.config.ambientNoiseVolume == 0.8)
+        #expect(store2.config.narrativeModeEnabled == true)
+        #expect(store2.boundaryStopPolicy == .stopAtLongBreak)
+    }
+
+    @Test func applyPreferences_minValueCorrection() {
+        let store = TimerStore()
+        let prefs = UserTimerPreferences(
+            focusDurationSec: 30,
+            shortBreakDurationSec: 10,
+            longBreakDurationSec: 45,
+            longBreakFrequency: 0,
+            autoStart: true,
+            notificationSoundEnabled: true,
+            boundaryStopPolicyRaw: BoundaryStopPolicy.none.rawValue
+        )
+
+        store.applyPreferences(prefs)
+
+        #expect(store.config.focusDurationSec == 60)
+        #expect(store.config.shortBreakDurationSec == 60)
+        #expect(store.config.longBreakDurationSec == 60)
+        #expect(store.config.longBreakFrequency == 1)
+    }
+
+    @Test func loadPreferences_setsConfigAndBoundaryPolicy() throws {
+        let modelContext = try Self.makeInMemoryModelContext()
+
+        let prefs = UserTimerPreferences(
+            focusDurationSec: 20 * 60,
+            shortBreakDurationSec: 3 * 60,
+            longBreakDurationSec: 10 * 60,
+            longBreakFrequency: 3,
+            autoStart: false,
+            notificationSoundEnabled: false,
+            boundaryStopPolicyRaw: BoundaryStopPolicy.stopAtLongBreak.rawValue
+        )
+        modelContext.insert(prefs)
+        try modelContext.save()
+
+        let store = TimerStore(
+            notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied)
+        )
+        store.bind(modelContext: modelContext)
+
+        #expect(store.config.focusDurationSec == 20 * 60)
+        #expect(store.config.longBreakFrequency == 3)
+        #expect(store.config.autoStart == false)
+        #expect(store.boundaryStopPolicy == .stopAtLongBreak)
+    }
+}
+
+@MainActor
+@Suite("Notification Integration")
+struct NotificationIntegrationTests {
+    private func drainMainActorTaskQueue() async {
+        await Task.yield()
+        await Task.yield()
+        await Task.yield()
+        await Task.yield()
+    }
+
+    @Test func fullCycle_startPauseResumeAutoTransition_schedulesAndCancelsCorrectly() async {
+        let notificationSpy = NotificationServiceSpy()
+        let store = TimerStore(notificationService: notificationSpy)
+
+        store.start()
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.scheduleCallCount == 1)
+        #expect(notificationSpy.lastScheduledSessionType == .focus)
+
+        store.pause()
+        let cancelAfterPause = notificationSpy.cancelCallCount
+        #expect(cancelAfterPause >= 1)
+
+        store.resume()
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.scheduleCallCount == 2)
+
+        let now = Date()
+        store.now = now
+        store.snapshot.endDate = now.addingTimeInterval(-1)
+        store.snapshot.startedAt = now.addingTimeInterval(-1500)
+        store.handleScenePhaseChange(.active)
+        await self.drainMainActorTaskQueue()
+
+        #expect(notificationSpy.cancelCallCount > cancelAfterPause)
+        #expect(notificationSpy.scheduleCallCount >= 3)
+        #expect(notificationSpy.lastScheduledSessionType == .shortBreak)
+    }
+
+    @Test func notificationSound_reflectsFocusModeStatus() async {
+        let notificationSpy = NotificationServiceSpy()
+        let focusSpy = FocusModeServiceSpy()
+        focusSpy.refreshedStatus = FocusModeStatus(authorizationState: .authorized, isFocused: false)
+        let store = TimerStore(notificationService: notificationSpy, focusModeService: focusSpy)
+
+        store.config.notificationSoundEnabled = true
+        store.config.respectFocusMode = true
+        store.start()
+        await self.drainMainActorTaskQueue()
+        #expect(notificationSpy.lastScheduledSoundEnabled == true)
+        let scheduleCountBeforeFocusChange = notificationSpy.scheduleCallCount
+
+        focusSpy.refreshedStatus = FocusModeStatus(authorizationState: .authorized, isFocused: true)
+        store.handleScenePhaseChange(.active)
+
+        for _ in 0 ..< 8 {
+            await Task.yield()
+        }
+
+        #expect(store.focusModeStatus.isFocused == true)
+        #expect(store.effectiveNotificationSoundEnabled == false)
+        #expect(notificationSpy.scheduleCallCount > scheduleCountBeforeFocusChange)
+        #expect(notificationSpy.lastScheduledSoundEnabled == false)
+    }
+}
 
 @Suite("PulseVisual")
 struct PulseVisualTests {
@@ -825,5 +1222,105 @@ struct WatchSyncPayloadTests {
             let isValid = value is String || value is Int || value is Double
             #expect(isValid, "Key '\(key)' has non-plist type: \(type(of: value))")
         }
+    }
+}
+
+@MainActor
+@Suite("Watch Commands")
+struct WatchCommandTests {
+    private func drainMainActorTaskQueue() async {
+        await Task.yield()
+        await Task.yield()
+    }
+
+    private func makeStore() -> (TimerStore, WatchSyncServiceSpy) {
+        let watchSpy = WatchSyncServiceSpy()
+        let store = TimerStore(
+            notificationService: NotificationServiceSpy(requestedAuthorizationState: .denied),
+            focusModeService: FocusModeServiceSpy(),
+            watchConnectivityService: watchSpy
+        )
+        return (store, watchSpy)
+    }
+
+    @Test func primaryAction_fromIdle_startsTimer() async {
+        let (store, _) = self.makeStore()
+        #expect(store.timerState == .idle)
+
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+
+        #expect(store.timerState == .running)
+    }
+
+    @Test func primaryAction_fromRunning_pausesTimer() async {
+        let (store, _) = self.makeStore()
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+        #expect(store.timerState == .running)
+
+        store.handleWatchCommand(.primaryAction)
+        #expect(store.timerState == .paused)
+    }
+
+    @Test func primaryAction_fromPaused_resumesTimer() async {
+        let (store, _) = self.makeStore()
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+        store.handleWatchCommand(.primaryAction)
+        #expect(store.timerState == .paused)
+
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+        #expect(store.timerState == .running)
+    }
+
+    @Test func reset_resetsToIdleFocus() async {
+        let (store, _) = self.makeStore()
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+        #expect(store.timerState == .running)
+
+        store.handleWatchCommand(.reset)
+        #expect(store.timerState == .idle)
+        #expect(store.sessionType == .focus)
+        #expect(store.completedFocusCount == 0)
+    }
+
+    @Test func skip_fromRunning_advancesToNextSession() {
+        let (store, _) = self.makeStore()
+        let now = Date()
+        store.now = now
+        store.config = TimerConfig.default
+        store.snapshot = TimerSnapshot(
+            sessionType: .focus,
+            timerState: .running,
+            startedAt: now.addingTimeInterval(-300),
+            endDate: now.addingTimeInterval(600),
+            pausedRemainingSec: nil,
+            completedFocusCount: 0,
+            boundaryStopPolicy: .none
+        )
+
+        store.handleWatchCommand(.skip)
+        #expect(store.sessionType == .shortBreak)
+        #expect(store.completedFocusCount == 1)
+    }
+
+    @Test func watchSync_calledOnStateTransitions() async {
+        let (store, watchSpy) = self.makeStore()
+        let initialSyncCount = watchSpy.syncCallCount
+
+        store.handleWatchCommand(.primaryAction)
+        await self.drainMainActorTaskQueue()
+        #expect(watchSpy.syncCallCount > initialSyncCount)
+        let afterStart = watchSpy.syncCallCount
+
+        store.handleWatchCommand(.primaryAction)
+        #expect(watchSpy.syncCallCount > afterStart)
+        let afterPause = watchSpy.syncCallCount
+
+        store.handleWatchCommand(.reset)
+        #expect(watchSpy.syncCallCount > afterPause)
     }
 }
