@@ -239,8 +239,30 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 - [ ] 審査提出
 - [ ] 公開確認 & git tag `v0.2.0`
 
+## i18n（日本語ローカライゼーション）
+
+設計: `docs/plans/2026-02-26-i18n-design.md`
+
+- [x] Xcode String Catalog インフラ整備（knownRegions に `ja` 追加、3つの `.xcstrings` 作成）
+- [x] App ターゲット: `String(localized:)` / `Text(verbatim:)` ラッピング（~55文字列）
+- [x] Watch ターゲット: セッションタイプ・アクション・接続ステータスのローカライズ
+- [x] Widget ターゲット: タイマー状態テキストのローカライズ
+- [x] 通知文言: セッションタイプ別個別文（補間廃止）
+- [x] 診断エラーメッセージのローカライズ
+- [x] テスト: 英語ベースライン（4件）+ 日本語ロケール検証（5件）
+- [x] CI 全パス（lint + test-macos 53件 + build-ios）
+
+## Compact Window（macOS）
+
+設計: `docs/plans/2026-02-26-compact-window-design.md`
+
+- [ ] `ContentView.swift`: `MacSidebarItem` enum + `NavigationSplitView` 削除、iOS と統一
+- [ ] `KokukokuApp.swift`: `WindowGroup` → `Window` + `.defaultSize(380, 640)` + `Settings` シーン
+- [ ] CLAUDE.md アーキテクチャセクション更新
+- [ ] 手動検証（ウィンドウサイズ、⌘,、⌘N無効化、Dock クリック）
+- [ ] CI 全パス
+
 ## Backlog（リリース後）
 
 - [ ] テスト拡充: NotificationService / FocusModeService / loadPreferencesIfNeeded
 - [ ] iOS UI テスト追加（macOS は 2件あるが iOS は 0件）
-- [ ] i18n 対応（日本語ローカライゼーション）— 調査中

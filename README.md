@@ -8,6 +8,7 @@ Current implementation status:
 - `Widget / Live Activity` (iOS) implemented
 - `Apple Watch companion` implemented (`WatchConnectivity`)
 - `Focus mode integration` implemented
+- `Japanese localization` (String Catalogs across all targets)
 
 ## Quick Start
 

@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- Japanese localization (String Catalogs) for App, Watch, and Widget targets
+- Localization tests: English baseline (4) and Japanese locale verification (5)
 - XcodeBuildMCP integration for structured build/test workflow
 - SwiftFormat auto-apply hook on file edit
 - Claude Code onboarding guide (CLAUDE.md)
