@@ -267,11 +267,12 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 設計: `docs/plans/2026-02-26-test-expansion.md`
 レビュー: `docs/plans/2026-02-26-test-strategy-review.md`
 
-- [ ] Task 1: TimerEngine エッジケーステスト（progress 境界値、remainingSeconds nil/過去、shouldStopAtBoundary skip 分岐）
-- [ ] Task 2: TimerStore ガード & 設定変更テスト（pause/resume no-op、skip from idle、configChange clamp、multi-boundary 復元）
-- [ ] Task 3: Persistence インテグレーションテスト（デフォルト作成、フルフィールドラウンドトリップ、min-value 補正）
-- [ ] Task 4: TimerStore + NotificationService インテグレーションテスト（start→pause→resume→auto-transition の schedule/cancel 連携）
-- [ ] Task 5: Watch コマンドテスト（handleWatchCommand 3コマンド、WatchSyncServiceSpy、sync 呼び出し検証）
+- [x] Task 1: TimerEngine エッジケーステスト（progress 境界値、remainingSeconds nil/過去、shouldStopAtBoundary skip 分岐）— 8 tests
+- [x] Task 2: TimerStore ガード & 設定変更テスト（pause/resume no-op、configChange clamp、multi-boundary 復元）— 8 tests
+- [x] Task 3: Persistence インテグレーションテスト（デフォルト作成、フルフィールドラウンドトリップ、min-value 補正）— 4 tests
+- [x] Task 4: TimerStore + NotificationService インテグレーションテスト（start→pause→resume→auto-transition の schedule/cancel 連携）— 2 tests
+- [x] Task 5: Watch コマンドテスト（handleWatchCommand 3コマンド、WatchSyncServiceSpy、sync 呼び出し検証）— 6 tests
+- [x] CI 全パス（lint + test-macos 81件 + build-ios）
 
 ## Backlog（リリース後）
 
