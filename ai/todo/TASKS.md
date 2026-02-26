@@ -256,11 +256,11 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 
 設計: `docs/plans/2026-02-26-compact-window-design.md`
 
-- [ ] `ContentView.swift`: `MacSidebarItem` enum + `NavigationSplitView` 削除、iOS と統一
-- [ ] `KokukokuApp.swift`: `WindowGroup` → `Window` + `.defaultSize(380, 640)` + `Settings` シーン
-- [ ] CLAUDE.md アーキテクチャセクション更新
+- [x] `ContentView.swift`: `MacSidebarItem` enum + `NavigationSplitView` 削除、iOS と統一
+- [x] `KokukokuApp.swift`: `WindowGroup` → `Window` + `.defaultSize(380, 640)` + `Settings` シーン
+- [x] CLAUDE.md アーキテクチャセクション更新
 - [ ] 手動検証（ウィンドウサイズ、⌘,、⌘N無効化、Dock クリック）
-- [ ] CI 全パス
+- [x] CI 全パス
 
 ## Backlog（リリース後）
 

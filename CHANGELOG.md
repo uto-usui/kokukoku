@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Sheet presentation for History and Settings with zoom transition
 
 ### Changed
+- macOS: Compact 380×640 single-column window replacing 900×600 sidebar layout
+- macOS: `Window` scene enforcing single instance (⌘N disabled)
+- macOS: ⌘, opens native Settings window
 - Skip now advances cycle count; Reset clears cycle to initial state
 - Paused state preserved when skipping sessions
 - Timer digits: 100pt thin weight, vibrant over material background
