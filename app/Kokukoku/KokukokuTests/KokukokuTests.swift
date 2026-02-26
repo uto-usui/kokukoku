@@ -674,6 +674,104 @@ struct PulseVisualTests {
     }
 }
 
+@Suite("Localization")
+struct LocalizationTests {
+    // MARK: - SessionType.title
+
+    @Test func sessionType_titleReturnsExpectedEnglish() {
+        #expect(SessionType.focus.title == "Focus")
+        #expect(SessionType.shortBreak.title == "Short Break")
+        #expect(SessionType.longBreak.title == "Long Break")
+    }
+
+    // MARK: - BoundaryStopPolicy.title
+
+    @Test func boundaryStopPolicy_titleReturnsExpectedEnglish() {
+        #expect(BoundaryStopPolicy.none.title == "No Boundary Stop")
+        #expect(BoundaryStopPolicy.stopAtNextBoundary.title == "Stop at Next Boundary")
+        #expect(BoundaryStopPolicy.stopAtLongBreak.title == "Stop at Long Break")
+    }
+
+    // MARK: - primaryActionTitle
+
+    @MainActor
+    @Test func primaryActionTitle_returnsCorrectTitlePerState() {
+        let store = TimerStore()
+
+        #expect(store.primaryActionTitle == "Start")
+
+        store.snapshot.timerState = .running
+        #expect(store.primaryActionTitle == "Pause")
+
+        store.snapshot.timerState = .paused
+        #expect(store.primaryActionTitle == "Resume")
+    }
+
+    // MARK: - focusCycleStatusText
+
+    @MainActor
+    @Test func focusCycleStatusText_formatsCorrectly() {
+        let store = TimerStore()
+        store.config.longBreakFrequency = 4
+        store.snapshot.completedFocusCount = 0
+        #expect(store.focusCycleStatusText == "Cycle: 0/4")
+
+        store.snapshot.completedFocusCount = 3
+        #expect(store.focusCycleStatusText == "Cycle: 3/4")
+
+        store.snapshot.completedFocusCount = 4
+        #expect(store.focusCycleStatusText == "Cycle: 0/4")
+    }
+
+    // MARK: - Japanese Locale Verification
+
+    /// Loads the ja.lproj sub-bundle from the host app bundle for reliable locale testing.
+    private static var jaBundle: Bundle {
+        let hostBundle = Bundle(for: TimerStore.self)
+        guard let url = hostBundle.url(forResource: "ja", withExtension: "lproj"),
+              let bundle = Bundle(url: url)
+        else {
+            preconditionFailure("ja.lproj not found in \(hostBundle.bundlePath)")
+        }
+        return bundle
+    }
+
+    private func ja(_ key: String) -> String {
+        NSLocalizedString(key, bundle: Self.jaBundle, comment: "")
+    }
+
+    @Test func japaneseLocale_sessionTypeTitles() {
+        #expect(self.ja("Focus") == "集中")
+        #expect(self.ja("Short Break") == "小休憩")
+        #expect(self.ja("Long Break") == "長休憩")
+    }
+
+    @Test func japaneseLocale_actionTitles() {
+        #expect(self.ja("Start") == "スタート")
+        #expect(self.ja("Pause") == "一時停止")
+        #expect(self.ja("Resume") == "再開")
+    }
+
+    @Test func japaneseLocale_uiLabels() {
+        #expect(self.ja("Settings") == "設定")
+        #expect(self.ja("History") == "履歴")
+        #expect(self.ja("Reset") == "リセット")
+        #expect(self.ja("Skip") == "スキップ")
+    }
+
+    @Test func japaneseLocale_notificationStrings() {
+        #expect(self.ja("Focus completed") == "集中セッション完了")
+        #expect(self.ja("Time for a break.") == "休憩の時間です。")
+        #expect(self.ja("Time to focus.") == "集中の時間です。")
+    }
+
+    @Test func japaneseLocale_boundaryStopPolicyTitles() {
+        #expect(self.ja("No Boundary Stop") == "自動継続")
+        #expect(self.ja("Stop at Next Boundary") == "次の区切りで停止")
+        #expect(self.ja("Stop at Long Break") == "長休憩で停止")
+    }
+}
+
 @Suite("WatchSyncPayload")
 struct WatchSyncPayloadTests {
     @Test func idleState_excludesNilOptionals() {
