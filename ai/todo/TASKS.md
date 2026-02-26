@@ -228,16 +228,16 @@ Settings 画面のセクション構成・項目順序・文言を整理。Codex
 - [x] SwiftLint 違反 8件修正（変数名、関数分割、file_length disable）
 - [x] `make ci` 全パス（lint + test-macos 44/44 + build-ios）
 
-## Release 0.2.0
+## Release 0.1.0
 
 手順ガイド: [`docs/RELEASE_GUIDE.md`](../docs/RELEASE_GUIDE.md)
 
-- [ ] CHANGELOG バージョンカット（`[Unreleased]` → `[0.2.0]`）
+- [x] CHANGELOG バージョンカット（`[Unreleased]` → `[0.1.0]`）
 - [ ] Xcode アーカイブ & App Store Connect アップロード
 - [ ] App Store Connect メタデータ設定（スクリーンショット、説明文、価格）
 - [ ] TestFlight 内部テスト
 - [ ] 審査提出
-- [ ] 公開確認 & git tag `v0.2.0`
+- [ ] 公開確認 & git tag `v0.1.0`
 
 ## i18n（日本語ローカライゼーション）
 
