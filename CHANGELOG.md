@@ -8,30 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [0.1.0] - 2026-02-26
 
-### Added
-- Core Pomodoro timer (Focus 25m / Short Break 5m / Long Break 15m)
-- Session transitions with configurable long break frequency
-- Boundary stop policies (none, stopAtNextBoundary, stopAtLongBreak)
-- Auto-start toggle
-- Settings screen (durations, frequency, auto-start, boundary policy, notification sound)
-- Session history with All/Focus/Breaks filter
-- Local notifications with sound on/off toggle
-- SwiftData persistence (SessionRecord, UserTimerPreferences)
-- Japanese localization (String Catalogs) for App, Watch, and Widget targets
-- Material surface texture (grain overlay) and vibrant typography via `.ultraThinMaterial`
-- Ambient noise (pink noise) during focus sessions
-- Haptic feedback on session transitions
-- System Focus Mode integration (mute sounds when Focus active)
-- Consolidated `...` menu in toolbar (Sound toggle, History, Settings)
-- Sheet presentation for History and Settings with zoom transition
+Initial release.
+
+### Timer
+- Pomodoro timer with Focus (25m) / Short Break (5m) / Long Break (15m)
+- Configurable durations, long break frequency, and auto-start
+- Boundary stop policies: stop at next boundary, stop at long break
+- Session history with All / Focus / Breaks filter
+
+### Design
+- Vibrant material surface with grain texture
+- 100pt thin-weight timer digits
+- Glass capsule primary button
+- Compact single-column layout (380×640 on macOS)
+
+### Audio & Notifications
+- Local notifications on session completion (sound on/off)
+- Ambient pink noise during focus sessions
+- Haptic feedback on state transitions (iOS)
+- System Focus Mode integration (auto-mute when Focus active)
+
+### Platforms
+- iOS and macOS universal app
 - macOS MenuBarExtra with timer status
 - Apple Watch companion app
 - iOS Widget and Live Activity
-- Unit tests (81) and macOS UI tests (4)
-- CI pipeline (SwiftLint + tests + iOS build)
 
-### Changed
-- macOS: Compact 380×640 single-column window (single instance, ⌘, for Settings)
-- Timer digits: 100pt thin weight, vibrant over material background
-- Primary button: glass capsule style
-- Reset/Skip visible only when paused
+### Localization
+- English and Japanese
