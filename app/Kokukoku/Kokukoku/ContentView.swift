@@ -91,6 +91,7 @@ struct ContentView: View {
                 case .timer:
                     NavigationStack {
                         TimerScreen(store: self.store)
+                            .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
                     }
                 case .history:
                     NavigationStack {

@@ -21,7 +21,7 @@ import SwiftUI
                 }
 
                 Text(self.store.formattedRemainingTime)
-                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .font(.system(size: 34, weight: .thin))
                     .monospacedDigit()
                     .accessibilityIdentifier("menubar.remaining")
 
@@ -30,11 +30,16 @@ import SwiftUI
                     .tint(.secondary)
 
                 HStack(spacing: 8) {
-                    Button(self.store.primaryActionTitle) {
+                    Button {
                         self.store.performPrimaryAction()
+                    } label: {
+                        Text(self.store.primaryActionTitle)
+                            .font(.body.weight(.medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(self.primaryActionTint)
+                    .buttonStyle(.plain)
+                    .background(Capsule().fill(.tertiary))
                     .accessibilityIdentifier("menubar.primaryAction")
 
                     Button("Skip") {
@@ -42,19 +47,17 @@ import SwiftUI
                     }
                     .buttonStyle(.bordered)
                     .tint(.primary)
+                    .controlSize(.small)
                     .accessibilityIdentifier("menubar.skip")
-                }
 
-                HStack(spacing: 8) {
                     Button("Reset") {
                         self.store.reset()
                     }
                     .buttonStyle(.bordered)
                     .tint(.primary)
+                    .controlSize(.small)
                     .disabled(!self.store.canReset)
                     .accessibilityIdentifier("menubar.reset")
-
-                    Spacer()
                 }
 
                 Divider()
@@ -69,15 +72,6 @@ import SwiftUI
             .frame(width: 280)
             .task {
                 self.store.bind(modelContext: self.modelContext)
-            }
-        }
-
-        private var primaryActionTint: Color {
-            switch self.store.timerState {
-            case .running:
-                .orange
-            case .idle, .paused:
-                .blue
             }
         }
 
