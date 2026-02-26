@@ -128,3 +128,24 @@ Detailed specs live in `ai/todo/`:
 - `TASKS.md` — Implementation task breakdown (milestones M0–M6)
 - `RELEASE_CHECKLIST.md` — MVP acceptance gates
 - `STRATEGY.md` — Product positioning and roadmap
+
+## App Store / Marketing Documents
+
+App Store 公開に向けた戦略ドキュメントは `docs/store/` に格納。
+
+**旧戦略（1,500円買い切り）** — `docs/store/`:
+- `01-product-planner.md` — ペルソナ、USP、メッセージ階層
+- `02-marketing-copywriting.md` — App Store 説明文・プロモーションテキスト（日英）
+- `03-brand-visual-strategy.md` — スクリーンショット戦略、ビジュアルディレクション
+- `04-business-aso.md` — ASO キーワード、価格戦略、競合分析
+- `05-dev-compliance.md` — 審査メモ、プライバシーポリシー、技術メタデータ（`docs/appstore/` へのインデックス）
+
+**ピボット戦略（期間限定無料→300円）** — `docs/store/pivot/`:
+- `01-product-planner-pivot.md` — 無料→有料化のKPI設計、LP戦略、制作者ブランディング
+- `02-marketing-pivot.md` — 無料版コピー、LP用コピー、note.com記事戦略、SNS用コピー
+- `03-brand-pivot.md` — LP デザインディレクション、Web版タイマーUI、SS修正方針
+- `04-business-pivot.md` — 無料アプリASO、¥300/$2.99 価格設計、note.com/Patreon収益モデル
+- `05-dev-pivot.md` — LP技術設計（Next.js Static Export）、Web版タイマー実装、SEO
+
+**コンプライアンス詳細** — `docs/appstore/`:
+- プライバシーポリシー（日英）、審査メモ、年齢レーティング、技術メタデータ等

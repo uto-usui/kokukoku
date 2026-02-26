@@ -72,6 +72,16 @@ cursor /Users/usui.y/work/uto/pomodoro-timer
 - Run `make doctor` before starting work.
 - Run `make ci` before commit/push.
 
+## Documentation
+
+- `CLAUDE.md` — Architecture, code style, build strategy, document index
+- `ai/todo/` — MVP spec, implementation tasks, release checklist, product strategy
+- `docs/store/` — App Store marketing strategy (original ¥1,500 buy-once model)
+- `docs/store/pivot/` — Pivot strategy (free → ¥300/$2.99, LP, note.com/Patreon)
+- `docs/appstore/` — Privacy policy, review notes, technical metadata, compliance
+- `docs/adr/` — Architecture Decision Records
+- `docs/plans/` — Implementation plans
+
 ## Watch Companion Verification
 
 - Launch `Kokukoku` on an iPhone + Apple Watch paired simulator.
