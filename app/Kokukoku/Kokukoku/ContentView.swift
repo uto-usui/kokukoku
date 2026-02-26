@@ -35,6 +35,7 @@ struct ContentView: View {
                 }
             #if os(macOS)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+                .frame(minWidth: 380, minHeight: 640)
             #else
                 .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
             #endif
