@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Background: off-white -->
+  <rect width="1024" height="1024" rx="224" fill="#FAFAFA"/>
+  <!-- Timer body: thick stroke circle -->
+  <circle cx="512" cy="540" r="280" fill="none" stroke="#1A1A1A" stroke-width="56" stroke-linecap="round"/>
+  <!-- Timer dial/knob at top -->
+  <line x1="512" y1="204" x2="512" y2="260" stroke="#1A1A1A" stroke-width="56" stroke-linecap="round"/>
+  <!-- Progress arc: ~70% of circle, lighter weight, from 12 o'clock clockwise -->
+  <!-- 70% of 360 = 252 degrees. Arc from -90deg to 162deg -->
+  <path d="M 512 260
+           A 280 280 0 1 1 246.4 680"
+        fill="none" stroke="#BBBBBB" stroke-width="28" stroke-linecap="round"/>
+</svg>

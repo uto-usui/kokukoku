@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Light mode: warm off-white (ultraThinMaterial approx) -->
+  <rect width="1024" height="1024" rx="224" fill="#F2F0ED"/>
+  <!-- 270° arc: 12 o'clock → clockwise → 9 o'clock -->
+  <path d="M 512 232 A 280 280 0 1 1 232 512"
+        fill="none" stroke="#1A1A1A" stroke-width="18" stroke-linecap="round"/>
+  <!-- Line from center to 9 o'clock (arc endpoint) -->
+  <line x1="512" y1="512" x2="232" y2="512"
+        stroke="#1A1A1A" stroke-width="18" stroke-linecap="round"/>
+</svg>

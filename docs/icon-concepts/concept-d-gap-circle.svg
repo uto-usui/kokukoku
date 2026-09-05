@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Background: off-white -->
+  <rect width="1024" height="1024" rx="224" fill="#FAFAFA"/>
+  <!-- Timer body: circle with a gap at 12 o'clock (the "刻む" cut) -->
+  <!-- Arc from ~15deg to 345deg (330 degree arc, 30deg gap at top) -->
+  <path d="M 584.5 267.6
+           A 280 280 0 1 1 439.5 267.6"
+        fill="none" stroke="#1A1A1A" stroke-width="56" stroke-linecap="round"/>
+  <!-- Small dot/knob above the gap -->
+  <circle cx="512" cy="210" r="24" fill="#1A1A1A"/>
+</svg>

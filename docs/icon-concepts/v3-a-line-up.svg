@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="224" fill="#FAFAFA"/>
+  <!-- 270° arc: from 3 o'clock clockwise through 6, 9, to 12 o'clock -->
+  <path d="M 792 512 A 280 280 0 1 1 512 232"
+        fill="none" stroke="#1A1A1A" stroke-width="48" stroke-linecap="round"/>
+  <!-- Line from center toward arc end (12 o'clock) -->
+  <line x1="512" y1="512" x2="512" y2="280"
+        stroke="#1A1A1A" stroke-width="48" stroke-linecap="round"/>
+</svg>

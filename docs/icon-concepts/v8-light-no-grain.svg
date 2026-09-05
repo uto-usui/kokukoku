@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- 135° warm gradient: top-left light → bottom-right deeper -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F6F4F1"/>
+      <stop offset="100%" stop-color="#E6E3DF"/>
+    </linearGradient>
+    <!-- Alpha gradient for stroke: 100% at 12 o'clock → 88% toward 9 o'clock -->
+    <linearGradient id="strokeFade" x1="50%" y1="0%" x2="0%" y2="50%">
+      <stop offset="0%" stop-color="#1A1A1A" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#1A1A1A" stop-opacity="0.88"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- 270° arc with alpha fade -->
+  <path d="M 512 232 A 280 280 0 1 1 232 512"
+        fill="none" stroke="url(#strokeFade)" stroke-width="18" stroke-linecap="round"/>
+  <!-- Line at 88% opacity (matches arc endpoint) -->
+  <line x1="512" y1="512" x2="232" y2="512"
+        stroke="#1A1A1A" stroke-width="18" stroke-linecap="round" stroke-opacity="0.88"/>
+</svg>

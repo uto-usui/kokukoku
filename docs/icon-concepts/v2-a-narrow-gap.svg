@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="224" fill="#FAFAFA"/>
+  <!-- Circle with narrow gap (24°) at 12 o'clock -->
+  <path d="M 570.2 238.1 A 280 280 0 1 1 453.8 238.1"
+        fill="none" stroke="#1A1A1A" stroke-width="48" stroke-linecap="round"/>
+  <!-- Line from center toward gap -->
+  <line x1="512" y1="512" x2="512" y2="285"
+        stroke="#1A1A1A" stroke-width="48" stroke-linecap="round"/>
+</svg>

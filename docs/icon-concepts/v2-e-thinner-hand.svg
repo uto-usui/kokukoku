@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect width="1024" height="1024" rx="224" fill="#FAFAFA"/>
+  <!-- Circle with medium gap (36°) -->
+  <path d="M 598.5 245.7 A 280 280 0 1 1 425.5 245.7"
+        fill="none" stroke="#1A1A1A" stroke-width="48" stroke-linecap="round"/>
+  <!-- Line thinner than circle, more contrast -->
+  <line x1="512" y1="512" x2="512" y2="295"
+        stroke="#1A1A1A" stroke-width="32" stroke-linecap="round"/>
+</svg>
